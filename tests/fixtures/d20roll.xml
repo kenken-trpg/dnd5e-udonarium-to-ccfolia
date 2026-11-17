@@ -1,0 +1,175 @@
+<?xml version="1.0"?>
+<character>
+  <data name="character">
+    <data name="image">
+      <data name="imageIdentifier" type="image">null</data>
+    </data>
+    <data name="common">
+      <data name="name">テスト・ソーサラー</data>
+      <data name="size">1</data>
+    </data>
+    <data name="detail">
+      <data name="基本">
+        <data name="種族">ティーフリング</data>
+        <data name="クラス">ソーサラー</data>
+        <data name="属性">秩序にして善(LG)</data>
+        <data name="プレイヤー">テストPL1</data>
+        <data name="レベル">5</data>
+      </data>
+      <data name="能力値">
+        <data name="【筋力】">8</data>
+        <data name="【敏捷力】">14</data>
+        <data name="【耐久力】">16</data>
+        <data name="【知力】">10</data>
+        <data name="【判断力】">10</data>
+        <data name="【魅力】">16</data>
+      </data>
+      <data name="能力値修正">
+        <data name="筋力修正">-1</data>
+        <data name="敏捷力修正">+2</data>
+        <data name="耐久力修正">+3</data>
+        <data name="知力修正">+0</data>
+        <data name="判断力修正">+0</data>
+        <data name="魅力修正">+3</data>
+      </data>
+      <data name="行動データ">
+        <data name="AC">12</data>
+        <data name="HP" type="numberResource" currentValue="37">37</data>
+        <data name="一時的HP" type="numberResource" currentValue="0">100</data>
+        <data name="ヒット・ダイス">4 1d6+3</data>
+        <data name="インスピレーション" type="numberResource" currentValue="0">1</data>
+        <data name="習熟ボーナス">3</data>
+        <data name="呪文攻撃ロール">+0</data>
+        <data name="呪文セーブ"/>
+        <data name="サイズ">中型</data>
+        <data name="移動速度">0ft./0sq.</data>
+        <data name="イニシアチブ">+2</data>
+        <data name="状態異常">-</data>
+      </data>
+      <data name="技能">
+        <data name="〈威圧〉">+6</data>
+        <data name="〈医術〉">+0</data>
+        <data name="〈運動〉">-1</data>
+        <data name="〈隠密〉">+2</data>
+        <data name="〈軽業〉">+2</data>
+        <data name="〈看破〉">+0</data>
+        <data name="〈芸能〉">+3</data>
+        <data name="〈自然〉">+0</data>
+        <data name="〈宗教〉">+0</data>
+        <data name="〈生存〉">+0</data>
+        <data name="〈説得〉">+6</data>
+        <data name="〈捜査〉">+0</data>
+        <data name="〈知覚〉">+0</data>
+        <data name="〈手先の早業〉">+2</data>
+        <data name="〈動物使い〉">+0</data>
+        <data name="〈ペテン〉">+3</data>
+        <data name="〈魔法学〉">+0</data>
+        <data name="〈歴史〉">+0</data>
+      </data>
+      <data name="セーヴィングスロー">
+        <data name="筋力セーヴ">-1</data>
+        <data name="敏捷力セーヴ">+2</data>
+        <data name="耐久力セーヴ">+6</data>
+        <data name="知力セーヴ">+0</data>
+        <data name="判断力セーヴ">+0</data>
+        <data name="魅力セーヴ">+6</data>
+      </data>
+      <data name="特徴等">
+        <data name="背景" type="note">　</data>
+        <data name="人格的特徴" type="note">　</data>
+        <data name="尊ぶもの" type="note">　</data>
+        <data name="関わり深いもの" type="note">　</data>
+        <data name="弱味" type="note">　</data>
+        <data name="その他設定など" type="note">　</data>
+        <data name="その他の習熟と言語" type="note">　</data>
+        <data name="特徴・特性" type="note">　</data>
+      </data>
+      <data name="呪文">
+        <data name="初級呪文">
+          <data name="ファイアー・ボルト"/>
+          <data name="フロストバイト"/>
+          <data name="シェイプ・ウォーター"/>
+          <data name="ライト"/>
+          <data name="メンディング"/>
+        </data>
+        <data name="lv1呪文">
+          <data name="lv1" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv2呪文">
+          <data name="lv2" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv3呪文">
+          <data name="lv3" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv4呪文">
+          <data name="lv4" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv5呪文">
+          <data name="lv5" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv6呪文">
+          <data name="lv6" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv7呪文">
+          <data name="lv7" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv8呪文">
+          <data name="lv8" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv9呪文">
+          <data name="lv9" type="numberResource" currentValue=""/>
+        </data>
+      </data>
+    </data>
+  </data>
+  <chat-palette dicebot="DungeonsAndDragons5">◆チャットパレット テスト・ソーサラー(PL:テストPL1)
+▼ レベル 5 ソーサラー / ティーフリング /  / 秩序にして善(LG)
+▼ 習熟ボーナス：3
+1d20+2 イニシアチブ
+⚔️ ===攻撃===
+💪 ===能力値判定===
+1d20-1 【筋力】能力値判定
+1d20+2 【敏捷力】能力値判定
+1d20+3 【耐久力】能力値判定
+1d20+0 【知力】能力値判定
+1d20+0 【判断力】能力値判定
+1d20+3 【魅力】能力値判定
+🛡️ ===セーヴィングスロー===
+1d20-1 【筋力】セーヴィングスロー
+1d20+2 【敏捷力】セーヴィングスロー
+1d20+6 【耐久力】セーヴィングスロー
+1d20+0 【知力】セーヴィングスロー
+1d20+0 【判断力】セーヴィングスロー
+1d20+6 【魅力】セーヴィングスロー
+🎲 ===技能===
+1d20+6 ▼〈威圧〉 【魅】技能判定
+1d20+0 ▼〈医術〉 【判】技能判定
+1d20-1 ▼〈運動〉 【筋】技能判定
+1d20+2 ▼〈隠密〉 【敏】技能判定
+1d20+2 ▼〈軽業〉 【敏】技能判定
+1d20+0 ▼〈看破〉 【判】技能判定
+1d20+3 ▼〈芸能〉 【魅】技能判定
+1d20+0 ▼〈自然〉 【知】技能判定
+1d20+0 ▼〈宗教〉 【知】技能判定
+1d20+0 ▼〈生存〉 【判】技能判定
+1d20+6 ▼〈説得〉 【魅】技能判定
+1d20+0 ▼〈捜査〉 【知】技能判定
+1d20+0 ▼〈知覚〉 【判】技能判定
+1d20+2 ▼〈手先の早業〉 【敏】技能判定
+1d20+0 ▼〈動物使い〉 【判】技能判定
+1d20+3 ▼〈ペテン〉 【魅】技能判定
+1d20+0 ▼〈魔法学〉 【知】技能判定
+1d20+0 ▼〈歴史〉 【知】技能判定
+🌱 ===その他の能力===
+
+🪄 ===呪文===
+呪文セーヴ難易度：
+1d20+0 呪文攻撃ロール
+📖 ===呪文リスト===
+0⃣ ===初級呪文===
+ファイアー・ボルト
+フロストバイト
+シェイプ・ウォーター
+ライト
+メンディング</chat-palette>
+</character>

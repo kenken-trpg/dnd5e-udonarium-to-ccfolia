@@ -1,0 +1,221 @@
+<?xml version="1.0"?>
+<character>
+  <data name="character">
+    <data name="image">
+      <data name="imageIdentifier" type="image">null</data>
+    </data>
+    <data name="common">
+      <data name="name">【テスト】マルチクラス</data>
+      <data name="size">1</data>
+    </data>
+    <data name="detail">
+      <data name="基本">
+        <data name="種族">ヒルドワーフ（ｵﾘｼﾞﾝｶｽﾀﾏｲｽﾞ）</data>
+        <data name="クラス">時計ソーサラー5 　嵐クレリック2</data>
+        <data name="属性">混沌にして善(CG)</data>
+        <data name="プレイヤー">テストPL3</data>
+        <data name="レベル">7</data>
+      </data>
+      <data name="能力値">
+        <data name="【筋力】">8</data>
+        <data name="【敏捷力】">12</data>
+        <data name="【耐久力】">16</data>
+        <data name="【知力】">8</data>
+        <data name="【判断力】">13</data>
+        <data name="【魅力】">18</data>
+      </data>
+      <data name="能力値修正">
+        <data name="筋力修正">-1</data>
+        <data name="敏捷力修正">+1</data>
+        <data name="耐久力修正">+3</data>
+        <data name="知力修正">-1</data>
+        <data name="判断力修正">+1</data>
+        <data name="魅力修正">+4</data>
+      </data>
+      <data name="行動データ">
+        <data name="AC">19</data>
+        <data name="HP" type="numberResource" currentValue="60">60</data>
+        <data name="一時的HP" type="numberResource" currentValue="0">100</data>
+        <data name="ヒット・ダイス"/>
+        <data name="インスピレーション" type="numberResource" currentValue="0">1</data>
+        <data name="習熟ボーナス">3</data>
+        <data name="呪文攻撃ロール">+8</data>
+        <data name="呪文セーブ">16</data>
+        <data name="サイズ">中型</data>
+        <data name="移動速度">25ft./5sq.</data>
+        <data name="イニシアチブ">+1</data>
+        <data name="状態異常">-</data>
+      </data>
+      <data name="技能">
+        <data name="〈威圧〉">+4</data>
+        <data name="〈医術〉">+1</data>
+        <data name="〈運動〉">-1</data>
+        <data name="〈隠密〉">+1</data>
+        <data name="〈軽業〉">+1</data>
+        <data name="〈看破〉">+4</data>
+        <data name="〈芸能〉">+4</data>
+        <data name="〈自然〉">-1</data>
+        <data name="〈宗教〉">+2</data>
+        <data name="〈生存〉">+1</data>
+        <data name="〈説得〉">+7</data>
+        <data name="〈捜査〉">-1</data>
+        <data name="〈知覚〉">+4</data>
+        <data name="〈手先の早業〉">+1</data>
+        <data name="〈動物使い〉">+1</data>
+        <data name="〈ペテン〉">+4</data>
+        <data name="〈魔法学〉">-1</data>
+        <data name="〈歴史〉">-1</data>
+      </data>
+      <data name="セーヴィングスロー">
+        <data name="筋力セーヴ">-1</data>
+        <data name="敏捷力セーヴ">+1</data>
+        <data name="耐久力セーヴ">+6</data>
+        <data name="知力セーヴ">-1</data>
+        <data name="判断力セーヴ">+1</data>
+        <data name="魅力セーヴ">+7</data>
+      </data>
+      <data name="特徴等">
+        <data name="背景" type="note">侍祭</data>
+        <data name="人格的特徴" type="note">テスト用の人格的特徴
+&#8226; 二行目</data>
+        <data name="尊ぶもの" type="note">テスト用の尊ぶもの</data>
+        <data name="関わり深いもの" type="note">テスト用の関わり深いもの</data>
+        <data name="弱味" type="note">テスト用の弱味</data>
+        <data name="その他設定など" type="note">テスト用のその他設定など</data>
+        <data name="その他の習熟と言語" type="note">テスト用のその他の習熟と言語</data>
+        <data name="特徴・特性" type="note">テスト用の特徴・特性</data>
+      </data>
+      <data name="呪文">
+        <data name="初級呪文">
+          <data name="マインドスリヴァー"/>
+          <data name="ファイアー・ボルト"/>
+          <data name="ライトニング・ルアー"/>
+          <data name="ショッキング・グラスプ"/>
+          <data name="レイオブフロスト"/>
+          <data name="トールザデッド（ク）DC12"/>
+          <data name="ガイダンス（ク）"/>
+          <data name="セイクレッドフレイム（ク）DC12"/>
+          <data name="メイジ・ハンド　不可視／(テ)"/>
+        </data>
+        <data name="lv1呪文">
+          <data name="lv1" type="numberResource" currentValue="4">4</data>
+          <data name="シールド（時）"/>
+          <data name="アブソーブエレメンツ（時）"/>
+          <data name="マジックミサイル"/>
+          <data name="フォッグクラウド（ク領）"/>
+          <data name="サンダーウェイブ（ク領）DC12"/>
+          <data name="ヒーリング・ワード（ク）"/>
+          <data name="ブレス（ク）"/>
+          <data name="サンクチュアリ（ク）"/>
+        </data>
+        <data name="lv2呪文">
+          <data name="lv2" type="numberResource" currentValue="3">3</data>
+          <data name="ターシャズマインドウィップ"/>
+          <data name="シャター"/>
+          <data name="ウェブ"/>
+          <data name="エイド（時）"/>
+          <data name="レッサー・レストレーション（時）"/>
+        </data>
+        <data name="lv3呪文">
+          <data name="lv3" type="numberResource" currentValue="3">3</data>
+          <data name="ライトニング・ボルト"/>
+          <data name="ファイアーボール"/>
+          <data name="プロテクションフロムエナジー（時）"/>
+          <data name="ディスペルマジック（時）"/>
+        </data>
+        <data name="lv4呪文">
+          <data name="lv4" type="numberResource" currentValue="1">1</data>
+        </data>
+        <data name="lv5呪文">
+          <data name="lv5" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv6呪文">
+          <data name="lv6" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv7呪文">
+          <data name="lv7" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv8呪文">
+          <data name="lv8" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv9呪文">
+          <data name="lv9" type="numberResource" currentValue=""/>
+        </data>
+      </data>
+    </data>
+  </data>
+  <chat-palette dicebot="DungeonsAndDragons5">◆チャットパレット 【テスト】マルチクラス(PL:テストPL3)
+▼ レベル 7 時計ソーサラー5 　嵐クレリック2 / ヒルドワーフ（ｵﾘｼﾞﾝｶｽﾀﾏｲｽﾞ） / 男 / 混沌にして善(CG)
+▼ 習熟ボーナス：3
+AR+1 イニシアチブ
+⚔️ ===攻撃===
+💪 ===能力値判定===
+AR{筋力修正} 【筋力】能力値判定
+AR{敏捷力修正} 【敏捷力】能力値判定
+AR{耐久力修正} 【耐久力】能力値判定
+AR{知力修正} 【知力】能力値判定
+AR{判断力修正} 【判断力】能力値判定
+AR{魅力修正} 【魅力】能力値判定
+🛡️ ===セーヴィングスロー===
+AR{筋力セーヴ} 【筋力】セーヴィングスロー
+AR{敏捷力セーヴ} 【敏捷力】セーヴィングスロー
+AR{耐久力セーヴ} 【耐久力】セーヴィングスロー
+AR{知力セーヴ} 【知力】セーヴィングスロー
+AR{判断力セーヴ} 【判断力】セーヴィングスロー
+AR{魅力セーヴ} 【魅力】セーヴィングスロー
+🎲 ===技能===
+AR{〈威圧〉} ▼〈威圧〉 【魅】技能判定
+AR{〈医術〉} ▼〈医術〉 【判】技能判定
+AR{〈運動〉} ▼〈運動〉 【筋】技能判定
+AR{〈隠密〉} ▼〈隠密〉 【敏】技能判定
+AR{〈軽業〉} ▼〈軽業〉 【敏】技能判定
+AR{〈看破〉} ▼〈看破〉 【判】技能判定
+AR{〈芸能〉} ▼〈芸能〉 【魅】技能判定
+AR{〈自然〉} ▼〈自然〉 【知】技能判定
+AR{〈宗教〉} ▼〈宗教〉 【知】技能判定
+AR{〈生存〉} ▼〈生存〉 【判】技能判定
+AR{〈説得〉} ▼〈説得〉 【魅】技能判定
+AR{〈捜査〉} ▼〈捜査〉 【知】技能判定
+AR{〈知覚〉} ▼〈知覚〉 【判】技能判定
+AR{〈手先の早業〉} ▼〈手先の早業〉 【敏】技能判定
+AR{〈動物使い〉} ▼〈動物使い〉 【判】技能判定
+AR{〈ペテン〉} ▼〈ペテン〉 【魅】技能判定
+AR{〈魔法学〉} ▼〈魔法学〉 【知】技能判定
+AR{〈歴史〉} ▼〈歴史〉 【知】技能判定
+🌱 ===その他の能力===
+
+🪄 ===呪文===
+呪文セーヴ難易度：16
+AT+8 呪文攻撃ロール
+📖 ===呪文リスト===
+0⃣ ===初級呪文===
+マインドスリヴァー
+ファイアー・ボルト
+ライトニング・ルアー
+ショッキング・グラスプ
+レイオブフロスト
+トールザデッド（ク）DC12
+ガイダンス（ク）
+セイクレッドフレイム（ク）DC12
+メイジ・ハンド　不可視／(テ)
+1⃣ ===lv1呪文===
+シールド（時）
+アブソーブエレメンツ（時）
+マジックミサイル
+フォッグクラウド（ク領）
+サンダーウェイブ（ク領）DC12
+ヒーリング・ワード（ク）
+ブレス（ク）
+サンクチュアリ（ク）
+2⃣ ===lv2呪文===
+ターシャズマインドウィップ
+シャター
+ウェブ
+エイド（時）
+レッサー・レストレーション（時）
+3⃣ ===lv3呪文===
+ライトニング・ボルト
+ファイアーボール
+プロテクションフロムエナジー（時）
+ディスペルマジック（時）</chat-palette>
+</character>

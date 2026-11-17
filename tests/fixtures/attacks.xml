@@ -1,0 +1,207 @@
+<?xml version="1.0"?>
+<character>
+  <data name="character">
+    <data name="image">
+      <data name="imageIdentifier" type="image">null</data>
+    </data>
+    <data name="common">
+      <data name="name">テスト・アーマラー</data>
+      <data name="size">1</data>
+    </data>
+    <data name="detail">
+      <data name="基本">
+        <data name="種族">ヒューマン</data>
+        <data name="クラス">アーマラー</data>
+        <data name="属性">混沌にして中立(CN)</data>
+        <data name="プレイヤー">テストPL2</data>
+        <data name="レベル">5</data>
+      </data>
+      <data name="能力値">
+        <data name="【筋力】">8</data>
+        <data name="【敏捷力】">16</data>
+        <data name="【耐久力】">14</data>
+        <data name="【知力】">18</data>
+        <data name="【判断力】">10</data>
+        <data name="【魅力】">8</data>
+      </data>
+      <data name="能力値修正">
+        <data name="筋力修正">-1</data>
+        <data name="敏捷力修正">+3</data>
+        <data name="耐久力修正">+2</data>
+        <data name="知力修正">+4</data>
+        <data name="判断力修正">+0</data>
+        <data name="魅力修正">-1</data>
+      </data>
+      <data name="行動データ">
+        <data name="AC">21</data>
+        <data name="HP" type="numberResource" currentValue="38">38</data>
+        <data name="一時的HP" type="numberResource" currentValue="0">100</data>
+        <data name="ヒット・ダイス">D8</data>
+        <data name="インスピレーション" type="numberResource" currentValue="0">1</data>
+        <data name="習熟ボーナス">3</data>
+        <data name="呪文攻撃ロール">+7</data>
+        <data name="呪文セーブ">15</data>
+        <data name="サイズ">中型</data>
+        <data name="移動速度">35ft./7sq.</data>
+        <data name="イニシアチブ">+3</data>
+        <data name="状態異常">-</data>
+      </data>
+      <data name="技能">
+        <data name="〈威圧〉">-1</data>
+        <data name="〈医術〉">+0</data>
+        <data name="〈運動〉">-1</data>
+        <data name="〈隠密〉">+6</data>
+        <data name="〈軽業〉">+3</data>
+        <data name="〈看破〉">+0</data>
+        <data name="〈芸能〉">-1</data>
+        <data name="〈自然〉">+4</data>
+        <data name="〈宗教〉">+4</data>
+        <data name="〈生存〉">+0</data>
+        <data name="〈説得〉">-1</data>
+        <data name="〈捜査〉">+7</data>
+        <data name="〈知覚〉">+0</data>
+        <data name="〈手先の早業〉">+6</data>
+        <data name="〈動物使い〉">+0</data>
+        <data name="〈ペテン〉">-1</data>
+        <data name="〈魔法学〉">+7</data>
+        <data name="〈歴史〉">+7</data>
+      </data>
+      <data name="セーヴィングスロー">
+        <data name="筋力セーヴ">-1</data>
+        <data name="敏捷力セーヴ">+3</data>
+        <data name="耐久力セーヴ">+5</data>
+        <data name="知力セーヴ">+7</data>
+        <data name="判断力セーヴ">+0</data>
+        <data name="魅力セーヴ">-1</data>
+      </data>
+      <data name="特徴等">
+        <data name="背景" type="note">貴族</data>
+        <data name="人格的特徴" type="note">　</data>
+        <data name="尊ぶもの" type="note">　</data>
+        <data name="関わり深いもの" type="note">　</data>
+        <data name="弱味" type="note">　</data>
+        <data name="その他設定など" type="note">　</data>
+        <data name="その他の習熟と言語" type="note">テスト用のその他の習熟と言語</data>
+        <data name="特徴・特性" type="note">テスト用の特徴・特性</data>
+      </data>
+      <data name="呪文">
+        <data name="初級呪文">
+          <data name="ガイダンス"/>
+          <data name="メンディング"/>
+        </data>
+        <data name="lv1呪文">
+          <data name="lv1" type="numberResource" currentValue="4">4</data>
+          <data name="フェアリーファイアー"/>
+          <data name="カタパルト"/>
+          <data name="キュアウーンズ"/>
+          <data name="ターシャズコースティックブリュー"/>
+          <data name="マジックミサイル"/>
+          <data name="サンダーウェーブ"/>
+          <data name="ジャンプ"/>
+          <data name="アイデンティファイ"/>
+        </data>
+        <data name="lv2呪文">
+          <data name="lv2" type="numberResource" currentValue=""/>
+          <data name="ウェブ"/>
+          <data name="エンラージ"/>
+          <data name="アーケインロック"/>
+          <data name="ミラー・イメージ"/>
+          <data name="シャッター"/>
+        </data>
+        <data name="lv3呪文">
+          <data name="lv3" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv4呪文">
+          <data name="lv4" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv5呪文">
+          <data name="lv5" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv6呪文">
+          <data name="lv6" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv7呪文">
+          <data name="lv7" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv8呪文">
+          <data name="lv8" type="numberResource" currentValue=""/>
+        </data>
+        <data name="lv9呪文">
+          <data name="lv9" type="numberResource" currentValue=""/>
+        </data>
+      </data>
+    </data>
+  </data>
+  <chat-palette dicebot="DungeonsAndDragons5">◆チャットパレット テスト・アーマラー(PL:テストPL2)
+▼ レベル 5 アーマラー / ヒューマン / 女 / 混沌にして中立(CN)
+▼ 習熟ボーナス：3
+AR+3 イニシアチブ
+⚔️ ===攻撃===
+AT+6 ライトクロスボウの攻撃ロール
+D8+3 [刺突] ライトクロスボウのダメージ (80/320)
+AT+6 ダガーの攻撃ロール
+D4+3 [刺突] ダガーのダメージ (20/60)
+AT+6 ダートの攻撃ロール
+D4+3 [刺突] ダートのダメージ (20/60)
+AT+6 スリングの攻撃ロール
+D4+3 [殴打] スリングのダメージ (30/120)
+AT+8 電撃ランチャー 90/300の攻撃ロール
+D6+5 [電撃] 電撃ランチャー 90/300のダメージ (+ｄ6/1回)
+💪 ===能力値判定===
+AR{筋力修正} 【筋力】能力値判定
+AR{敏捷力修正} 【敏捷力】能力値判定
+AR{耐久力修正} 【耐久力】能力値判定
+AR{知力修正} 【知力】能力値判定
+AR{判断力修正} 【判断力】能力値判定
+AR{魅力修正} 【魅力】能力値判定
+🛡️ ===セーヴィングスロー===
+AR{筋力セーヴ} 【筋力】セーヴィングスロー
+AR{敏捷力セーヴ} 【敏捷力】セーヴィングスロー
+AR{耐久力セーヴ} 【耐久力】セーヴィングスロー
+AR{知力セーヴ} 【知力】セーヴィングスロー
+AR{判断力セーヴ} 【判断力】セーヴィングスロー
+AR{魅力セーヴ} 【魅力】セーヴィングスロー
+🎲 ===技能===
+AR{〈威圧〉} ▼〈威圧〉 【魅】技能判定
+AR{〈医術〉} ▼〈医術〉 【判】技能判定
+AR{〈運動〉} ▼〈運動〉 【筋】技能判定
+AR{〈隠密〉} ▼〈隠密〉 【敏】技能判定
+AR{〈軽業〉} ▼〈軽業〉 【敏】技能判定
+AR{〈看破〉} ▼〈看破〉 【判】技能判定
+AR{〈芸能〉} ▼〈芸能〉 【魅】技能判定
+AR{〈自然〉} ▼〈自然〉 【知】技能判定
+AR{〈宗教〉} ▼〈宗教〉 【知】技能判定
+AR{〈生存〉} ▼〈生存〉 【判】技能判定
+AR{〈説得〉} ▼〈説得〉 【魅】技能判定
+AR{〈捜査〉} ▼〈捜査〉 【知】技能判定
+AR{〈知覚〉} ▼〈知覚〉 【判】技能判定
+AR{〈手先の早業〉} ▼〈手先の早業〉 【敏】技能判定
+AR{〈動物使い〉} ▼〈動物使い〉 【判】技能判定
+AR{〈ペテン〉} ▼〈ペテン〉 【魅】技能判定
+AR{〈魔法学〉} ▼〈魔法学〉 【知】技能判定
+AR{〈歴史〉} ▼〈歴史〉 【知】技能判定
+🌱 ===その他の能力===
+
+🪄 ===呪文===
+呪文セーヴ難易度：15
+AT+7 呪文攻撃ロール
+📖 ===呪文リスト===
+0⃣ ===初級呪文===
+ガイダンス
+メンディング
+1⃣ ===lv1呪文===
+フェアリーファイアー
+カタパルト
+キュアウーンズ
+ターシャズコースティックブリュー
+マジックミサイル
+サンダーウェーブ
+ジャンプ
+アイデンティファイ
+2⃣ ===lv2呪文===
+ウェブ
+エンラージ
+アーケインロック
+ミラー・イメージ
+シャッター</chat-palette>
+</character>
