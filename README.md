@@ -1,10 +1,12 @@
 # D&D5e ココフォリア変換
 
+**公開ページ: https://kenken-trpg.github.io/dnd5e-udonarium-to-ccfolia/**
+
 [D&D5e ユドナリウムPCコマ生成ツール](https://unib-5e-udonarium-pc.onrender.com/)（うにバター氏作）で保存した
 ユドナリウムのコマ（ZIP）を、ココフォリアに貼り付けられるキャラクターJSONに変換するツール。
 同じ変換をする2つの版がある。どちらも生成ツールのサーバーには接続せず、利用者がアップロードしたファイルだけを変換する。
 
-- **ブラウザ版**（`index.html`）: ビルドもサーバーも不要。ダブルクリックで開くだけ。
+- **ブラウザ版**（`index.html`）: [公開ページ](https://kenken-trpg.github.io/dnd5e-udonarium-to-ccfolia/)でそのまま使える。手元でダブルクリックして開いてもよい。
 - **Streamlit版**（`streamlit_app.py`）: Python で動かす版。
 
 ## 使い方（ブラウザ版）
@@ -15,15 +17,13 @@
    複数ファイルをまとめて読み込める。ファイルはブラウザの外に送信されない。
 3. 「ココフォリア用にコピー」を押し、ココフォリアの盤面で `Ctrl+V` / `⌘V`。
 
-## GitHub Pages で公開する
+## GitHub Pages
 
-`.github/workflows/pages.yml` が `index.html` と `converter.js` だけを配信する。有効化の手順:
+ブラウザ版は https://kenken-trpg.github.io/dnd5e-udonarium-to-ccfolia/ で公開している。
+`.github/workflows/pages.yml` が `index.html` と `converter.js` だけを配信し、
+この2つを main に push するたびに自動で更新される（Actions タブの「Deploy to GitHub Pages」→ Run workflow で手動更新も可）。
 
-1. リポジトリの **Settings → Pages → Build and deployment → Source** で「**GitHub Actions**」を選ぶ。
-2. **Actions** タブ → 「Deploy to GitHub Pages」 → **Run workflow**。
-3. `https://kenken-trpg.github.io/dnd5e-udonarium-to-ccfolia/` で公開される。
-
-以降は `index.html` か `converter.js` を main に push するたびに自動で更新される（有効化前の push ではジョブはスキップされる）。
+フォークして自分で公開する場合は、**Settings → Pages → Build and deployment → Source** で「**GitHub Actions**」を選んでから上記ワークフローを実行する。
 
 ## 使い方（Streamlit版）
 
