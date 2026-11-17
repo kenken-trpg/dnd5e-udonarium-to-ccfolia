@@ -1,13 +1,15 @@
 # D&D5e ココフォリア変換
 
-**公開ページ: https://kenken-trpg.github.io/dnd5e-udonarium-to-ccfolia/**
+**公開ページ**
+- ブラウザ版: https://kenken-trpg.github.io/dnd5e-udonarium-to-ccfolia/
+- Streamlit版: https://dnd5e-udonarium-to-ccfolia-bndd4irjirpaskop4jzyx2.streamlit.app/
 
 [D&D5e ユドナリウムPCコマ生成ツール](https://unib-5e-udonarium-pc.onrender.com/)（うにバター氏作）で保存した
 ユドナリウムのコマ（ZIP）を、ココフォリアに貼り付けられるキャラクターJSONに変換するツール。
 同じ変換をする2つの版がある。どちらも生成ツールのサーバーには接続せず、利用者がアップロードしたファイルだけを変換する。
 
 - **ブラウザ版**（`index.html`）: [公開ページ](https://kenken-trpg.github.io/dnd5e-udonarium-to-ccfolia/)でそのまま使える。手元でダブルクリックして開いてもよい。
-- **Streamlit版**（`streamlit_app.py`）: Python で動かす版。
+- **Streamlit版**（`streamlit_app.py`）: Python で動かす版。[Streamlit Community Cloud](https://dnd5e-udonarium-to-ccfolia-bndd4irjirpaskop4jzyx2.streamlit.app/) で公開している。手元でも起動できる。
 
 ## 使い方（ブラウザ版）
 
@@ -26,6 +28,8 @@
 フォークして自分で公開する場合は、**Settings → Pages → Build and deployment → Source** で「**GitHub Actions**」を選んでから上記ワークフローを実行する。
 
 ## 使い方（Streamlit版）
+
+https://dnd5e-udonarium-to-ccfolia-bndd4irjirpaskop4jzyx2.streamlit.app/ を開けばそのまま使える。手元で動かす場合:
 
 ```sh
 python3 -m venv .venv
