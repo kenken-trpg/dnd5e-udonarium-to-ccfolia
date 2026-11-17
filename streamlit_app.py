@@ -100,4 +100,8 @@ st.markdown(
 立ち絵は引き継がれません。貼り付け後にココフォリアで設定してください。
 """
 )
+st.caption(
+    "同じ変換ができる [ブラウザ版](https://kenken-trpg.github.io/dnd5e-udonarium-to-ccfolia/) もあります。"
+    "ソースコード: [GitHub](https://github.com/kenken-trpg/dnd5e-udonarium-to-ccfolia)"
+)
 st.caption("元データ: D&D総合コミュニティ「D&D5E キャラクターデータベース」／ コマ生成: うにバター氏「D&D5e ユドナリウムPCコマ生成ツール」")
