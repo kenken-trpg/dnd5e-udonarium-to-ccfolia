@@ -15,23 +15,6 @@ async function convert(name, opts) {
 }
 const byLabel = (list, label) => list.find(x => x.label === label);
 
-test('URLの正規化', () => {
-  assert.equal(C.normalizeSheetUrl('https://dndjp.sakura.ne.jp/OUTPUT.php?ID=63823'),
-    'https://dndjp.sakura.ne.jp/OUTPUT.php?ID=63823');
-  assert.equal(C.normalizeSheetUrl(' 63823 '), 'https://dndjp.sakura.ne.jp/OUTPUT.php?ID=63823');
-  assert.equal(C.normalizeSheetUrl('http://dndjp.sakura.ne.jp/OUTPUT.php?ID=1&x=2'),
-    'https://dndjp.sakura.ne.jp/OUTPUT.php?ID=1');
-  assert.equal(C.normalizeSheetUrl('https://example.com/?ID=1'), null);
-});
-
-test('バックエンドURLの組み立て', () => {
-  const u = new URL(C.buildBackendUrl('https://dndjp.sakura.ne.jp/OUTPUT.php?ID=5', { d20roll: true }));
-  assert.equal(u.searchParams.get('url'), 'https://dndjp.sakura.ne.jp/OUTPUT.php?ID=5');
-  assert.equal(u.searchParams.get('simple_palette'), 'false');
-  assert.equal(u.searchParams.get('rollcommand'), 'default');
-  assert.equal(new URL(C.buildBackendUrl('x')).searchParams.has('rollcommand'), false);
-});
-
 test('ZIPからXMLを取り出して変換できる', async () => {
   const { out } = await convert('sorcerer.zip');
   const d = out.data;

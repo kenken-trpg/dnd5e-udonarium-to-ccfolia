@@ -1,8 +1,8 @@
 /*
  * D&D5e ユドナリウムコマ → ココフォリア用JSON 変換ロジック
  *
- * 想定入力: https://unib-5e-udonarium-pc.onrender.com/ が生成するユドナリウムのキャラクターXML
- *           （または、それを含むZIP）
+ * 想定入力: https://unib-5e-udonarium-pc.onrender.com/ で利用者が生成・保存した
+ *           ユドナリウムのキャラクターXML（または、それを含むZIP）
  * ブラウザでは window.UdonCcfolia、Node では module.exports として使える。
  */
 (function (root, factory) {
@@ -11,25 +11,6 @@
   else root.UdonCcfolia = api;
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-
-  const BACKEND_URL = 'https://fivee-udonarium-pc-backend.onrender.com/create-5e-udonarium-pc';
-  const SHEET_URL_PREFIX = 'https://dndjp.sakura.ne.jp/OUTPUT.php?ID=';
-
-  // ---------------------------------------------------------------- URL
-
-  /** 「https://dndjp.sakura.ne.jp/OUTPUT.php?ID=12345」や「12345」からシートURLを得る */
-  function normalizeSheetUrl(input) {
-    const s = String(input || '').trim();
-    if (/^\d+$/.test(s)) return SHEET_URL_PREFIX + s;
-    const m = s.match(/^https?:\/\/dndjp\.sakura\.ne\.jp\/OUTPUT\.php\?(?:.*&)?ID=(\d+)/i);
-    return m ? SHEET_URL_PREFIX + m[1] : null;
-  }
-
-  function buildBackendUrl(sheetUrl, { simplePalette = false, d20roll = false } = {}) {
-    const q = new URLSearchParams({ url: sheetUrl, simple_palette: String(!!simplePalette) });
-    if (d20roll) q.set('rollcommand', 'default');
-    return BACKEND_URL + '?' + q.toString();
-  }
 
   // ---------------------------------------------------------------- ZIP
 
@@ -279,10 +260,7 @@
   }
 
   return {
-    BACKEND_URL,
     DEFAULT_OPTIONS,
-    normalizeSheetUrl,
-    buildBackendUrl,
     unzip,
     extractXmlTexts,
     parseUdonariumXml,

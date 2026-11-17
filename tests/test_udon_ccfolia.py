@@ -23,19 +23,6 @@ def by_label(lst, label):
     return next((x for x in lst if x["label"] == label), None)
 
 
-def test_normalize_sheet_url():
-    assert U.normalize_sheet_url("https://dndjp.sakura.ne.jp/OUTPUT.php?ID=63823") == U.SHEET_URL_PREFIX + "63823"
-    assert U.normalize_sheet_url(" 63823 ") == U.SHEET_URL_PREFIX + "63823"
-    assert U.normalize_sheet_url("http://dndjp.sakura.ne.jp/OUTPUT.php?ID=1&x=2") == U.SHEET_URL_PREFIX + "1"
-    assert U.normalize_sheet_url("https://example.com/?ID=1") is None
-
-
-def test_backend_url():
-    from urllib.parse import parse_qs, urlparse
-    q = parse_qs(urlparse(U.build_backend_url(U.SHEET_URL_PREFIX + "5", d20roll=True)).query)
-    assert q == {"url": [U.SHEET_URL_PREFIX + "5"], "simple_palette": ["false"], "rollcommand": ["default"]}
-
-
 def test_zip_and_basic_fields():
     [(name, _)] = U.extract_xml_texts((FIX / "sorcerer.zip").read_bytes())
     assert name == "テスト・ソーサラー.xml"
@@ -72,7 +59,7 @@ def test_invalid_input():
 
 CASES = [
     ("sorcerer.zip", {}),
-    ("multiclass.xml", {"includeNotes": True, "externalUrl": U.SHEET_URL_PREFIX + "63819"}),
+    ("multiclass.xml", {"includeNotes": True, "externalUrl": "https://example.com/sheet"}),
     ("attacks.xml", {"expandRefs": True, "color": "#336699"}),
     ("d20roll.xml", {}),
 ]

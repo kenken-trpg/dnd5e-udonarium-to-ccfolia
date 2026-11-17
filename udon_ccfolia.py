@@ -1,8 +1,8 @@
 """D&D5e ユドナリウムコマ → ココフォリア用JSON 変換ロジック（Python版）
 
 converter.js と同じ変換を行う。Streamlit 版（streamlit_app.py）から使う。
-想定入力: https://unib-5e-udonarium-pc.onrender.com/ が生成するユドナリウムのキャラクターXML、
-          またはそれを含むZIP。
+想定入力: https://unib-5e-udonarium-pc.onrender.com/ で利用者が生成・保存した
+          ユドナリウムのキャラクターXML、またはそれを含むZIP。
 """
 from __future__ import annotations
 
@@ -12,52 +12,12 @@ import re
 import zipfile
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from urllib.parse import unquote, urlencode
 
-BACKEND_URL = "https://fivee-udonarium-pc-backend.onrender.com/create-5e-udonarium-pc"
-SHEET_URL_PREFIX = "https://dndjp.sakura.ne.jp/OUTPUT.php?ID="
 DEFAULT_COLOR = "#888888"
 
 
 class ConvertError(Exception):
     """利用者に見せるエラー"""
-
-
-# ---------------------------------------------------------------- URL
-
-def normalize_sheet_url(text: str) -> str | None:
-    """「https://dndjp.sakura.ne.jp/OUTPUT.php?ID=12345」や「12345」からシートURLを得る"""
-    s = str(text or "").strip()
-    if re.fullmatch(r"\d+", s):
-        return SHEET_URL_PREFIX + s
-    m = re.match(r"^https?://dndjp\.sakura\.ne\.jp/OUTPUT\.php\?(?:.*&)?ID=(\d+)", s, re.I)
-    return SHEET_URL_PREFIX + m.group(1) if m else None
-
-
-def build_backend_url(sheet_url: str, simple_palette: bool = False, d20roll: bool = False) -> str:
-    q = {"url": sheet_url, "simple_palette": "true" if simple_palette else "false"}
-    if d20roll:
-        q["rollcommand"] = "default"
-    return BACKEND_URL + "?" + urlencode(q)
-
-
-def filename_from_disposition(header: str | None) -> str:
-    m = re.search(r"filename\*=UTF-8''\"?([^\";]+)\"?", header or "", re.I)
-    return unquote(m.group(1)) if m else ""
-
-
-def fetch_udonarium_zip(sheet_url: str, simple_palette: bool = False, d20roll: bool = False,
-                        timeout: float = 180) -> tuple[bytes, str]:
-    """変換サーバーからユドナリウムのZIPを取得する。(ZIPのバイト列, ファイル名) を返す"""
-    import requests
-
-    try:
-        res = requests.get(build_backend_url(sheet_url, simple_palette, d20roll), timeout=timeout)
-    except requests.RequestException as e:
-        raise ConvertError(f"変換サーバーに接続できませんでした（{e.__class__.__name__}）。しばらくしてから再度お試しください。") from e
-    if res.status_code != 200:
-        raise ConvertError(f"変換サーバーがエラーを返しました（HTTP {res.status_code}）。シートのURLが正しいか確認してください。")
-    return res.content, filename_from_disposition(res.headers.get("content-disposition"))
 
 
 # ---------------------------------------------------------------- ZIP / XML

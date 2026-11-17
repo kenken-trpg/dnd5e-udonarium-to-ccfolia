@@ -47,25 +47,13 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 20px; margin-bottom: 16px;
   }
-  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
-  .tab {
-    appearance: none; background: none; border: 0; border-bottom: 2px solid transparent;
-    padding: 8px 12px; font: inherit; color: var(--muted); cursor: pointer; margin-bottom: -1px;
-  }
-  .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; }
-  input[type="text"] {
-    flex: 1 1 280px; min-width: 0; font: inherit; padding: 9px 12px; color: var(--text);
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-  }
-  input[type="text"]:focus-visible, button:focus-visible, .drop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:focus-visible, .drop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   button.primary, button.secondary {
     font: inherit; font-weight: 600; padding: 9px 16px; border-radius: 8px; cursor: pointer;
     border: 1px solid var(--accent);
   }
   button.primary { background: var(--accent); color: var(--accent-text); }
   button.secondary { background: transparent; color: var(--accent); }
-  button:disabled { opacity: .5; cursor: progress; }
   .opts { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 12px; font-size: .9rem; }
   .opts label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
   .hint { color: var(--muted); font-size: .82rem; margin: 10px 0 0; }
@@ -106,44 +94,30 @@
 <main>
   <h1>D&amp;D5e ココフォリア変換</h1>
   <p class="lead">
-    <a href="https://dndjp.sakura.ne.jp/LIST.php" target="_blank" rel="noopener">D&amp;D5E キャラクターデータベース</a>のシートを
-    <a href="https://unib-5e-udonarium-pc.onrender.com/" target="_blank" rel="noopener">ユドナリウムPCコマ生成ツール</a>でコマにし、
-    それをココフォリアに貼り付けられるキャラクターデータへ変換します。
-    ココフォリア用への変換はこのブラウザ内で行い、シートURLから読み込むときだけ生成ツールの変換サーバーを使います。
+    <a href="https://unib-5e-udonarium-pc.onrender.com/" target="_blank" rel="noopener">D&amp;D5e ユドナリウムPCコマ生成ツール</a>で保存したコマ（ZIP）を、
+    ココフォリアに貼り付けられるキャラクターデータへ変換します。
+    変換はこのブラウザの中だけで行い、ファイルはどこにも送信しません。
   </p>
 
+  <section class="card" aria-labelledby="prep-h">
+    <h2 id="prep-h">1. ユドナリウムのコマを用意する</h2>
+    <ol class="howto">
+      <li><a href="https://dndjp.sakura.ne.jp/LIST.php" target="_blank" rel="noopener">D&amp;D5E キャラクターデータベース</a>で、キャラクターシートのURL（<code>https://dndjp.sakura.ne.jp/OUTPUT.php?ID=…</code>）をコピーする。</li>
+      <li><a href="https://unib-5e-udonarium-pc.onrender.com/" target="_blank" rel="noopener">D&amp;D5e ユドナリウムPCコマ生成ツール</a>にURLを貼り付けて生成し、ZIPを保存する。</li>
+    </ol>
+  </section>
+
   <section class="card" aria-labelledby="in-h">
-    <h2 id="in-h">1. 読み込む</h2>
-    <div class="tabs" role="tablist">
-      <button class="tab" role="tab" aria-selected="true" aria-controls="pane-url" id="tab-url">シートURLから</button>
-      <button class="tab" role="tab" aria-selected="false" aria-controls="pane-file" id="tab-file">ユドナリウムのファイルから</button>
+    <h2 id="in-h">2. 読み込む</h2>
+    <div id="drop" class="drop" tabindex="0" role="button" aria-label="ZIP または XML ファイルを選択">
+      保存した <strong>ZIP</strong>（または中の <strong>XML</strong>）をここにドロップ、またはクリックして選択
     </div>
-
-    <div id="pane-url" role="tabpanel" aria-labelledby="tab-url">
-      <form id="url-form" class="row">
-        <input id="sheet-url" type="text" inputmode="url" autocomplete="off"
-               placeholder="https://dndjp.sakura.ne.jp/OUTPUT.php?ID=12345（IDだけでも可）" aria-label="キャラクターシートのURL">
-        <button id="fetch-btn" class="primary" type="submit">取得して変換</button>
-      </form>
-      <div class="opts">
-        <label><input type="checkbox" id="opt-simple"> シンプルなチャットパレット</label>
-        <label><input type="checkbox" id="opt-d20"> ダイスを 1d20+x 形式にする（AR/AT を使わない）</label>
-      </div>
-      <p class="hint">ユドナリウムPCコマ生成ツールの変換サーバーを呼び出します。サーバーが休止中だと、最初の変換に1分ほどかかることがあります。</p>
-    </div>
-
-    <div id="pane-file" role="tabpanel" aria-labelledby="tab-file" class="hidden">
-      <div id="drop" class="drop" tabindex="0" role="button" aria-label="ZIP または XML ファイルを選択">
-        生成ツールでダウンロードした <strong>ZIP</strong>（または中の <strong>XML</strong>）をここにドロップ、またはクリックして選択
-      </div>
-      <input id="file-input" type="file" accept=".zip,.xml,application/zip,text/xml" multiple class="hidden">
-    </div>
-
+    <input id="file-input" type="file" accept=".zip,.xml,application/zip,text/xml" multiple class="hidden">
     <p id="msg" class="msg" role="status" aria-live="polite"></p>
   </section>
 
   <section class="card" aria-labelledby="opt-h">
-    <h2 id="opt-h">2. 出力オプション</h2>
+    <h2 id="opt-h">3. 出力オプション</h2>
     <div class="opts" style="margin-top:0">
       <label><input type="checkbox" id="opt-notes"> 背景・人格的特徴などをメモに入れる</label>
       <label><input type="checkbox" id="opt-expand"> パレットの {参照} を数値に置き換える</label>
@@ -178,7 +152,6 @@
     <div class="actions">
       <button class="primary" data-a="copy">ココフォリア用にコピー</button>
       <button class="secondary" data-a="save">JSONを保存</button>
-      <button class="secondary hidden" data-a="zip">ユドナリウムZIPを保存</button>
     </div>
     <details><summary>チャットパレット</summary><pre data-f="palette"></pre></details>
     <details><summary>メモ</summary><pre data-f="memo"></pre></details>
@@ -194,34 +167,22 @@
   const $ = id => document.getElementById(id);
   const msg = $('msg');
   const results = $('results');
-  /** @type {{parsed, sheetUrl, zipBlob, zipName, el}[]} */
+  /** @type {{parsed, out, el}[]} */
   let entries = [];
 
   const setMsg = (text, kind = '') => { msg.textContent = text; msg.className = 'msg' + (kind ? ' ' + kind : ''); };
 
-  // ---- タブ
-  const tabs = [['tab-url', 'pane-url'], ['tab-file', 'pane-file']];
-  for (const [t, p] of tabs) {
-    $(t).addEventListener('click', () => {
-      for (const [t2, p2] of tabs) {
-        $(t2).setAttribute('aria-selected', String(t2 === t));
-        $(p2).classList.toggle('hidden', p2 !== p);
-      }
-    });
-  }
-
   // ---- 出力オプション
-  const outputOptions = sheetUrl => ({
+  const outputOptions = () => ({
     includeNotes: $('opt-notes').checked,
     expandRefs: $('opt-expand').checked,
     color: $('opt-color').value,
-    externalUrl: sheetUrl || '',
   });
   for (const id of ['opt-notes', 'opt-expand', 'opt-color']) $(id).addEventListener('input', () => entries.forEach(render));
 
   // ---- 変換結果の表示
   function render(entry) {
-    const out = C.toCcfolia(entry.parsed, outputOptions(entry.sheetUrl));
+    const out = C.toCcfolia(entry.parsed, outputOptions());
     entry.out = out;
     const el = entry.el;
     const f = name => el.querySelector(`[data-f="${name}"]`);
@@ -249,17 +210,12 @@
     f('json').textContent = JSON.stringify(out, null, 2);
   }
 
-  function addEntry(parsed, { sheetUrl = '', zipBlob = null, zipName = '' } = {}) {
+  function addEntry(parsed) {
     const el = $('result-tpl').content.firstElementChild.cloneNode(true);
-    const entry = { parsed, sheetUrl, zipBlob, zipName, el };
+    const entry = { parsed, el };
     el.querySelector('[data-a="copy"]').addEventListener('click', e => copy(entry, e.currentTarget));
     el.querySelector('[data-a="save"]').addEventListener('click', () =>
       download(new Blob([JSON.stringify(entry.out, null, 2)], { type: 'application/json' }), safeName(parsed.name) + '_ccfolia.json'));
-    const zipBtn = el.querySelector('[data-a="zip"]');
-    if (zipBlob) {
-      zipBtn.classList.remove('hidden');
-      zipBtn.addEventListener('click', () => download(zipBlob, zipName || safeName(parsed.name) + '.zip'));
-    }
     entries.push(entry);
     results.append(el);
     render(entry);
@@ -294,47 +250,6 @@
   }
 
   const safeName = s => String(s).replace(/[\\/:*?"<>|]+/g, '_').trim() || 'character';
-
-  // ---- シートURLから
-  function filenameFromDisposition(h) {
-    const m = h && h.match(/filename\*=UTF-8''"?([^";]+)"?/i);
-    if (!m) return '';
-    try { return decodeURIComponent(m[1]); } catch { return ''; }
-  }
-
-  $('url-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const sheetUrl = C.normalizeSheetUrl($('sheet-url').value);
-    if (!sheetUrl) {
-      setMsg('URLの形式が正しくありません。https://dndjp.sakura.ne.jp/OUTPUT.php?ID=数字 の形で入力してください。', 'err');
-      return;
-    }
-    const btn = $('fetch-btn');
-    btn.disabled = true;
-    setMsg('変換サーバーでユドナリウムのコマを作っています…');
-    const slow = setTimeout(() => setMsg('変換サーバーの起動を待っています…（休止中だと1分ほどかかります）'), 6000);
-    try {
-      const res = await fetch(C.buildBackendUrl(sheetUrl, {
-        simplePalette: $('opt-simple').checked, d20roll: $('opt-d20').checked,
-      }));
-      if (!res.ok) throw new Error(`変換サーバーがエラーを返しました（HTTP ${res.status}）。シートのURLが正しいか確認してください。`);
-      const buf = await res.arrayBuffer();
-      const xmls = await C.extractXmlTexts(buf);
-      clearEntries();
-      const zipBlob = new Blob([buf], { type: 'application/zip' });
-      const zipName = filenameFromDisposition(res.headers.get('content-disposition'));
-      for (const x of xmls) addEntry(C.parseUdonariumXml(x.xml), { sheetUrl, zipBlob, zipName });
-      setMsg(`変換しました（${xmls.length}体）。`, 'ok');
-    } catch (err) {
-      const text = err instanceof TypeError
-        ? '変換サーバーに接続できませんでした。ネットワークを確認するか、しばらくしてから再度お試しください。'
-        : err.message;
-      setMsg(text, 'err');
-    } finally {
-      clearTimeout(slow);
-      btn.disabled = false;
-    }
-  });
 
   // ---- ファイルから
   async function handleFiles(fileList) {

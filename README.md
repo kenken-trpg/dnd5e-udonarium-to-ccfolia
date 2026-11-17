@@ -1,19 +1,18 @@
 # D&D5e ココフォリア変換
 
-[D&D5E キャラクターデータベース](https://dndjp.sakura.ne.jp/LIST.php) のシートを
-[D&D5e ユドナリウムPCコマ生成ツール](https://unib-5e-udonarium-pc.onrender.com/) で作ったユドナリウムのコマを、
-ココフォリアに貼り付けられるキャラクターJSONに変換するツール。同じ変換をする2つの版がある。
+[D&D5e ユドナリウムPCコマ生成ツール](https://unib-5e-udonarium-pc.onrender.com/)（うにバター氏作）で保存した
+ユドナリウムのコマ（ZIP）を、ココフォリアに貼り付けられるキャラクターJSONに変換するツール。
+同じ変換をする2つの版がある。どちらも生成ツールのサーバーには接続せず、利用者がアップロードしたファイルだけを変換する。
 
 - **ブラウザ版**（`index.html`）: ビルドもサーバーも不要。ダブルクリックで開くだけ。
 - **Streamlit版**（`streamlit_app.py`）: Python で動かす版。
 
 ## 使い方（ブラウザ版）
 
-1. `index.html` をブラウザで開く（ダブルクリックでよい）。
-2. どちらかで読み込む。
-   - **シートURLから**: `https://dndjp.sakura.ne.jp/OUTPUT.php?ID=12345`（IDだけでも可）を入れて「取得して変換」。
-     生成ツールの変換サーバー（`fivee-udonarium-pc-backend.onrender.com`）を直接呼ぶ。休止中だと初回は1分ほどかかる。
-   - **ユドナリウムのファイルから**: 生成ツールでダウンロードしたZIP、または中のXMLをドロップする。
+1. [D&D5E キャラクターデータベース](https://dndjp.sakura.ne.jp/LIST.php) でキャラクターシートのURLをコピーし、
+   [D&D5e ユドナリウムPCコマ生成ツール](https://unib-5e-udonarium-pc.onrender.com/) で生成してZIPを保存する。
+2. `index.html` をブラウザで開き（ダブルクリックでよい）、保存したZIP（または中のXML）をドロップする。
+   複数ファイルをまとめて読み込める。ファイルはブラウザの外に送信されない。
 3. 「ココフォリア用にコピー」を押し、ココフォリアの盤面で `Ctrl+V` / `⌘V`。
 
 ## GitHub Pages で公開する
@@ -34,8 +33,7 @@ python3 -m venv .venv
 .venv/bin/streamlit run streamlit_app.py
 ```
 
-読み込み方はブラウザ版と同じ。変換サーバーへはPython側から接続する。
-コピーは「ココフォリア用JSON」欄の右上のアイコンから。
+コマの用意と読み込み方はブラウザ版と同じ。コピーは「ココフォリア用JSON」欄の右上のアイコンから。
 
 ## 変換内容
 
