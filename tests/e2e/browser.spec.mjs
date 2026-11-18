@@ -275,13 +275,18 @@ test('配布用ZIPを展開してそのまま使える', async ({ page, browserN
   execFileSync('bash', [fileURLToPath(new URL('../../scripts/build-site.sh', import.meta.url)), out]);
   execFileSync('unzip', ['-q', `${out}/dnd5e-ccfolia.zip`, '-d', `${out}/extracted`]);
   const dir = `${out}/extracted/dnd5e-ccfolia`;
-  expect(readdirSync(dir).sort()).toEqual(['README.txt', 'app.js', 'archive.js', 'converter.js', 'index.html', 'manual.html', 'style.css']);
+  expect(readdirSync(dir).sort()).toEqual(['README.txt', 'app.js', 'archive.js', 'converter.js', 'images', 'index.html', 'manual.html', 'style.css']);
 
   await openApp(page, pathToFileURL(`${dir}/index.html`).href);
   await upload(page, 'sorcerer.zip');
   await expect(card(page, 'テスト・ソーサラー')).toHaveCount(1);
   await page.goto(pathToFileURL(`${dir}/manual.html`).href);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('D&D5e ココフォリア変換 マニュアル');
+  await expect(page.getByRole('img')).toHaveCount(3);
+  for (const image of await page.getByRole('img').all()) {
+    await image.scrollIntoViewIfNeeded();
+    await expect.poll(() => image.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
+  }
   // 目次は本文の h2 見出しと1対1で対応する
   await expect(page.getByRole('navigation', { name: '目次' }).getByRole('link')).toHaveCount(await page.locator('main > h2').count());
   expect(await page.locator('a[href^="#"]').evaluateAll(links => links

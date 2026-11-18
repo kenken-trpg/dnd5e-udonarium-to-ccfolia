@@ -15,6 +15,8 @@ cp "${FILES[@]}" "$OUT/"
 cp "${FILES[@]}" "$OUT/.pkg/$PKG/"
 python3 scripts/build-manual.py "$OUT/manual.html"
 cp "$OUT/manual.html" "$OUT/.pkg/$PKG/"
+cp -R docs/images "$OUT/"
+cp -R docs/images "$OUT/.pkg/$PKG/"
 cp docs/offline-readme.txt "$OUT/.pkg/$PKG/README.txt"
 # -X: OS固有の属性を入れない
 (cd "$OUT/.pkg" && zip -q -r -X "../$PKG.zip" "$PKG")

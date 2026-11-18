@@ -15,6 +15,7 @@ on:
       - scripts/build-site.sh
       - docs/offline-readme.txt
       - docs/manual.md
+      - docs/images/**
       - scripts/build-manual.py
       - .github/workflows/pages.yml
   workflow_dispatch:
