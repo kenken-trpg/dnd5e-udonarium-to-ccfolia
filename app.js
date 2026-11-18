@@ -46,12 +46,31 @@
   }
   wireTips(document);
 
+  // 手元のファイルとして開いているときは、ZIPのダウンロード案内を出さない（ZIPは公開ページにしか無い）
+  if (location.protocol === 'file:') for (const el of document.querySelectorAll('[data-online-only]')) el.hidden = true;
+
   // ---- 出力オプション
   const outputOptions = () => ({
     includeNotes: $('opt-notes').checked,
     expandRefs: $('opt-expand').checked,
     color: $('opt-color').value,
   });
+
+  // 選んだオプションはこのブラウザの localStorage に覚えておく。
+  // プライベートウィンドウなどで使えない・壊れた値が入っている場合は、既定のまま動く
+  const OPTIONS_KEY = 'dnd5e-ccfolia:options';
+  function restoreOptions() {
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(OPTIONS_KEY)); } catch { return; }
+    if (!saved || typeof saved !== 'object') return;
+    if (typeof saved.includeNotes === 'boolean') $('opt-notes').checked = saved.includeNotes;
+    if (typeof saved.expandRefs === 'boolean') $('opt-expand').checked = saved.expandRefs;
+    if (typeof saved.color === 'string' && /^#[0-9a-f]{6}$/i.test(saved.color)) $('opt-color').value = saved.color;
+  }
+  function saveOptions() {
+    try { localStorage.setItem(OPTIONS_KEY, JSON.stringify(outputOptions())); } catch { /* 保存できなくても変換には影響しない */ }
+  }
+  restoreOptions();
   // 色を選んでいる間は input が連続して来るので、1フレームに1回だけ描き直す
   let renderQueued = false;
   function renderAll() {
@@ -59,7 +78,9 @@
     renderQueued = true;
     requestAnimationFrame(() => { renderQueued = false; entries.forEach(render); });
   }
-  for (const id of ['opt-notes', 'opt-expand', 'opt-color']) $(id).addEventListener('input', renderAll);
+  for (const id of ['opt-notes', 'opt-expand', 'opt-color']) {
+    $(id).addEventListener('input', () => { saveOptions(); renderAll(); });
+  }
 
   // ---- 変換結果の表示
   const chip = text => Object.assign(document.createElement('span'), { className: 'chip', textContent: text });

@@ -1,6 +1,7 @@
 // ブラウザ版（index.html + app.js + converter.js）のE2Eテスト
-import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test, expect, openApp, fixturePath, ORIGIN, XML_PARSE_ERROR_NOISE } from './fixtures.mjs';
 
 const cards = page => page.locator('#results article');
@@ -177,6 +178,54 @@ test.describe('ツールチップヘルプ', () => {
 // ダブルクリックで開いた場合（file://）も CSP に阻まれずに動くこと
 test('ローカルファイルとして開いても動く', async ({ page }) => {
   await openApp(page, pathToFileURL(fixturePath('../../index.html')).href);
+  await upload(page, 'sorcerer.zip');
+  await expect(card(page, 'テスト・ソーサラー')).toHaveCount(1);
+});
+
+test.describe('出力オプションの記憶', () => {
+  test('選んだオプションは再読み込みしても残る', async ({ page }) => {
+    await page.getByLabel('背景・人格的特徴などをメモに入れる').check();
+    await page.getByLabel('コマの色').fill('#336699');
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-ready', 'true');
+    await expect(page.getByLabel('背景・人格的特徴などをメモに入れる')).toBeChecked();
+    await expect(page.getByLabel('パレットの {参照} を数値に置き換える')).not.toBeChecked();
+    await expect(page.getByLabel('コマの色')).toHaveValue('#336699');
+    await upload(page, 'multiclass.xml');
+    await expect(cards(page).first().locator('[data-f="memo"]')).toContainText('【背景】');
+  });
+
+  for (const [label, stored] of [
+    ['壊れたJSON', '{broken'],
+    ['型や形式が違う値', JSON.stringify({ includeNotes: 'yes', expandRefs: 1, color: 'red; background:url(x)' })],
+  ]) {
+    test(`記憶した値が${label}なら既定のまま動く`, async ({ page }) => {
+      await page.evaluate(v => localStorage.setItem('dnd5e-ccfolia:options', v), stored);
+      await page.reload();
+      await expect(page.locator('html')).toHaveAttribute('data-ready', 'true');
+      await expect(page.getByLabel('背景・人格的特徴などをメモに入れる')).not.toBeChecked();
+      await expect(page.getByLabel('パレットの {参照} を数値に置き換える')).not.toBeChecked();
+      await expect(page.getByLabel('コマの色')).toHaveValue('#888888');
+    });
+  }
+});
+
+test('公開ページには手元で使うZIPの案内があり、ZIPから開いたときは出さない', async ({ page }) => {
+  await expect(page.getByRole('link', { name: 'ZIPをダウンロード' })).toHaveAttribute('href', 'dnd5e-ccfolia.zip');
+  await openApp(page, pathToFileURL(fixturePath('../../index.html')).href);
+  await expect(page.getByRole('link', { name: 'ZIPをダウンロード' })).toBeHidden();
+});
+
+// 配信するZIPを実際に作って展開し、中の index.html をダブルクリックで開いた想定で使えること
+test('配布用ZIPを展開してそのまま使える', async ({ page, browserName }, testInfo) => {
+  test.skip(browserName !== 'chromium', 'ZIPの中身はブラウザによらないので Chromium だけで確かめる');
+  const out = testInfo.outputPath('site');
+  execFileSync('bash', [fileURLToPath(new URL('../../scripts/build-site.sh', import.meta.url)), out]);
+  execFileSync('unzip', ['-q', `${out}/dnd5e-ccfolia.zip`, '-d', `${out}/extracted`]);
+  const dir = `${out}/extracted/dnd5e-ccfolia`;
+  expect(readdirSync(dir).sort()).toEqual(['README.txt', 'app.js', 'converter.js', 'index.html', 'style.css']);
+
+  await openApp(page, pathToFileURL(`${dir}/index.html`).href);
   await upload(page, 'sorcerer.zip');
   await expect(card(page, 'テスト・ソーサラー')).toHaveCount(1);
 });

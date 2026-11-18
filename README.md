@@ -21,7 +21,7 @@
    複数ファイルをまとめて読み込める。ファイルはブラウザの外に送信されない。
 3. 「ココフォリア用にコピー」を押し、ココフォリアの盤面で `Ctrl+V` / `⌘V`。
 
-手元で使う場合は `index.html`・`app.js`・`converter.js`・`style.css` を同じフォルダに置き、`index.html` をダブルクリックで開く。
+手元で使う場合は、公開ページ下部の「ZIPをダウンロード」（`dnd5e-ccfolia.zip`）を展開し、`index.html` をダブルクリックで開く。
 
 ## 使い方（Streamlit版）
 
@@ -64,6 +64,8 @@ python3 -m venv .venv
 | `udon_ccfolia.py` | Streamlit版の変換ロジック（`converter.js` と同じ出力になる） |
 | `tests/` | テストと、生成ツールが実際に出力したサンプル（`fixtures/`） |
 | `docs/manual.md` | 利用者向けマニュアル |
+| `scripts/build-site.sh` | GitHub Pages の配信物（4ファイルと、手元で使うためのZIP）を作る |
+| `docs/offline-readme.txt` | ZIPに入れる説明書（`README.txt`） |
 
 変換ルールや上限（`LIMITS` / `MAX_*`）を変えるときは `converter.js` と `udon_ccfolia.py` の両方を直す。
 Python側のテストが両者の出力の一致を確かめる。
@@ -121,8 +123,8 @@ Firefox と WebKit で E2E を回す（Actions タブから手動でも実行で
 
 ### GitHub Pages
 
-`.github/workflows/pages.yml` が `index.html`・`app.js`・`converter.js`・`style.css` だけを配信し、
-これらを main に push するたびに自動で更新される（Actions タブの「Deploy to GitHub Pages」→ Run workflow で手動更新も可）。
+`.github/workflows/pages.yml` が `scripts/build-site.sh` で `index.html`・`app.js`・`converter.js`・`style.css` と
+手元で使うためのZIP（`dnd5e-ccfolia.zip`）を作って配信し、これらが main で変わるたびに自動で更新される（Actions タブの「Deploy to GitHub Pages」→ Run workflow で手動更新も可）。
 
 フォークして自分で公開する場合は、**Settings → Pages → Build and deployment → Source** で「**GitHub Actions**」を選んでから上記ワークフローを実行する。
 
