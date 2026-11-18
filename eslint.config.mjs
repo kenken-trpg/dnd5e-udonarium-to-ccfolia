@@ -12,7 +12,7 @@ const common = {
 };
 
 export default [
-  { ignores: ['node_modules/', 'test-results/', 'playwright-report/', '.venv/'] },
+  { ignores: ['node_modules/', 'test-results/', 'playwright-report/', '.venv/', '_site/'] },
   js.configs.recommended,
   {
     // ブラウザで <script> として読むファイル。converter.js は Node からも require する
