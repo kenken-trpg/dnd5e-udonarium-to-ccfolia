@@ -132,3 +132,5 @@ div.has-tip > .chips { margin-bottom: 0; }
 }
 .tip-btn:hover, .tip-btn:focus-visible { border-color: var(--accent); color: var(--accent); }
 .tip-btn:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.manual img { display: block; max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: var(--radius); }

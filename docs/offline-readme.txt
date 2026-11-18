@@ -16,7 +16,7 @@ D&D5e ココフォリア変換（手元で使う版）
   「全員分をZIPで保存」はバックアップ用です。ココフォリアへは、展開した各JSONの中身をコピーして1体ずつ貼り付けてください。
 
 フォルダの中身
-  index.html / app.js / converter.js / archive.js / style.css / manual.html は、同じフォルダに置いたままにしてください。
+  index.html / app.js / converter.js / archive.js / style.css / manual.html と images フォルダは、同じフォルダに置いたままにしてください。
   どれかが欠けると動きません。
 
 マニュアル・よくある質問

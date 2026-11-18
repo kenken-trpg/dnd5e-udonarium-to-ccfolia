@@ -2,7 +2,7 @@
 """このリポジトリのマニュアルで使うMarkdownを静的HTMLにする（外部依存なし）。
 
 使い方: python3 scripts/build-manual.py 出力先.html
-対応する記法は docs/manual.md で使っている見出し・段落・リスト・表・リンク・コード・太字だけ。
+対応する記法は docs/manual.md で使っている見出し・段落・リスト・表・リンク・画像・コード・太字だけ。
 h2 見出しから目次を作り、h1 の直後に置く。
 """
 import html
@@ -85,6 +85,10 @@ def render(source):
             elif level == 2:
                 toc.append(f'<li><a href="#{slug}">{inline(text)}</a></li>')
             i += 1
+        elif re.fullmatch(r"!\[([^\]]*)\]\((images/[a-z0-9-]+\.png)\)", line):
+            image = re.fullmatch(r"!\[([^\]]*)\]\((images/[a-z0-9-]+\.png)\)", line)
+            output.append(f'<p><img src="{image[2]}" alt="{html.escape(image[1], quote=True)}" loading="lazy"></p>')
+            i += 1
         elif line == "---":
             output.append("<hr>")
             i += 1
@@ -125,7 +129,7 @@ if __name__ == "__main__":
     page = '''<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types 'none'">
 <meta name="referrer" content="no-referrer">
 <title>D&amp;D5e ココフォリア変換 マニュアル</title>
 <link rel="stylesheet" href="style.css"></head>
