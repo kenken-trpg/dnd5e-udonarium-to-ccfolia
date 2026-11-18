@@ -77,3 +77,47 @@ test('JSONとして直列化できる', async () => {
 test('不正な入力はエラーになる', () => {
   assert.throws(() => C.parseUdonariumXml('<foo/>', DOMParser), /<character>/);
 });
+
+// ---------------------------------------------------------------- 安全性
+
+test('展開後に大きすぎるZIP（ZIP爆弾）は途中で打ち切る', async () => {
+  await assert.rejects(C.extractXmlTexts(fixture('bomb.zip'), 'bomb.zip'), /大きすぎます/);
+});
+
+test('大きすぎるファイルは読み込まない', async () => {
+  const big = new Uint8Array(C.LIMITS.maxInputBytes + 1);
+  await assert.rejects(C.extractXmlTexts(big, 'big.xml'), /大きすぎます/);
+});
+
+test('壊れたZIPは分かるエラーになる', async () => {
+  const zip = new Uint8Array(fixture('sorcerer.zip'));
+  // 末尾を切り詰める → ディレクトリが無い
+  await assert.rejects(C.extractXmlTexts(zip.subarray(0, zip.length - 30)), /ZIP/);
+  // セントラルディレクトリのローカルヘッダ位置を範囲外にする
+  const broken = zip.slice();
+  const dv = new DataView(broken.buffer);
+  let cd = -1;
+  for (let i = 0; i < broken.length - 4; i++) if (dv.getUint32(i, true) === 0x02014b50) { cd = i; break; }
+  dv.setUint32(cd + 42, 0x7fffffff, true);
+  await assert.rejects(C.extractXmlTexts(broken), /壊れています/);
+});
+
+test('XML以外のエントリは展開しない', async () => {
+  const seen = [];
+  await C.unzip(fixture('sorcerer.zip'), { filter: name => { seen.push(name); return false; } });
+  assert.equal(seen.length, 1);
+  assert.deepEqual(await C.unzip(fixture('sorcerer.zip'), { filter: () => false }), []);
+});
+
+test('DTD付きのXMLは拒否する（実体展開による膨張対策）', () => {
+  const xml = '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "aaaa">]><character><data name="character"/></character>';
+  assert.throws(() => C.parseUdonariumXml(xml, DOMParser), /DTD/);
+});
+
+test('パレットの {constructor} などは組み込みプロパティに化けない', async () => {
+  const { parsed } = await convert('attacks.xml');
+  parsed.palette = '{constructor} {toString} {筋力修正}';
+  const out = C.toCcfolia(parsed, { expandRefs: true });
+  const str = byLabel(out.data.params, '筋力修正').value;
+  assert.equal(out.data.commands, `{constructor} {toString} ${str}`);
+});

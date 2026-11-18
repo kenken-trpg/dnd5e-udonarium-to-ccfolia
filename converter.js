@@ -12,68 +12,136 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
+  // ---------------------------------------------------------------- 上限
+
+  /**
+   * 悪意のある・壊れたファイルでブラウザが固まらないための上限。
+   * 生成ツールのZIPは数KB、キャラクターXMLは10KB前後なので十分に余裕がある。
+   * udon_ccfolia.py の同名の定数と揃えること。
+   */
+  const LIMITS = Object.freeze({
+    maxInputBytes: 20 * 1024 * 1024, // 読み込むファイル1つの大きさ
+    maxZipEntries: 1000,             // ZIP内のファイル数
+    maxXmlBytes: 5 * 1024 * 1024,    // 展開後のXML1つの大きさ（ZIP爆弾対策）
+  });
+  const MB = n => `${Math.round(n / 1024 / 1024)}MB`;
+
   // ---------------------------------------------------------------- ZIP
+
+  const SIG_LOCAL = 0x04034b50;
+  const SIG_CENTRAL = 0x02014b50;
+  const SIG_EOCD = 0x06054b50;
+  const BROKEN_ZIP = 'ZIPのディレクトリ情報が壊れています。';
 
   function isZip(u8) {
     return u8.length >= 4 && u8[0] === 0x50 && u8[1] === 0x4b && u8[2] === 0x03 && u8[3] === 0x04;
   }
 
-  async function inflateRaw(u8) {
-    const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
+  function checkInputSize(u8) {
+    if (u8.length > LIMITS.maxInputBytes) {
+      throw new Error(`ファイルが大きすぎます（上限 ${MB(LIMITS.maxInputBytes)}）。`);
+    }
   }
 
-  /** ZIP内のファイルを [{name, data:Uint8Array}] で返す（セントラルディレクトリを読む最小実装） */
-  async function unzip(buffer) {
+  /** deflate-raw を展開する。limit バイトを超えた時点で打ち切る */
+  async function inflateRaw(u8, limit) {
+    const reader = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+    const chunks = [];
+    let total = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.length;
+        if (total > limit) break;
+        chunks.push(value);
+      }
+    } catch {
+      throw new Error('ZIPの展開に失敗しました。ファイルが壊れている可能性があります。');
+    }
+    if (total > limit) {
+      reader.cancel().catch(() => {});
+      throw new Error(`ZIP内のファイルが大きすぎます（上限 ${MB(limit)}）。`);
+    }
+    const out = new Uint8Array(total);
+    let off = 0;
+    for (const c of chunks) { out.set(c, off); off += c.length; }
+    return out;
+  }
+
+  /**
+   * ZIP内のファイルを [{name, data:Uint8Array}] で返す（セントラルディレクトリを読む最小実装）。
+   * filter を渡すと、名前が一致したファイルだけを展開する。
+   */
+  async function unzip(buffer, { filter = () => true } = {}) {
     const u8 = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    checkInputSize(u8);
     const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    const inBounds = (off, len) => off >= 0 && len >= 0 && off + len <= u8.length;
+
     let eocd = -1;
     for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) {
-      if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+      if (dv.getUint32(i, true) === SIG_EOCD) { eocd = i; break; }
     }
     if (eocd < 0) throw new Error('ZIPファイルとして読み込めませんでした。');
 
     const count = dv.getUint16(eocd + 10, true);
+    if (count > LIMITS.maxZipEntries) throw new Error(`ZIP内のファイルが多すぎます（上限 ${LIMITS.maxZipEntries}個）。`);
     let p = dv.getUint32(eocd + 16, true);
     const utf8 = new TextDecoder('utf-8');
     const files = [];
     for (let k = 0; k < count; k++) {
-      if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('ZIPのディレクトリ情報が壊れています。');
+      if (!inBounds(p, 46) || dv.getUint32(p, true) !== SIG_CENTRAL) throw new Error(BROKEN_ZIP);
       const method = dv.getUint16(p + 10, true);
       const compSize = dv.getUint32(p + 20, true);
       const nameLen = dv.getUint16(p + 28, true);
       const extraLen = dv.getUint16(p + 30, true);
       const commentLen = dv.getUint16(p + 32, true);
       const localOff = dv.getUint32(p + 42, true);
+      if (!inBounds(p + 46, nameLen)) throw new Error(BROKEN_ZIP);
       const name = utf8.decode(u8.subarray(p + 46, p + 46 + nameLen));
       p += 46 + nameLen + extraLen + commentLen;
-      if (name.endsWith('/')) continue;
+      if (name.endsWith('/') || !filter(name)) continue;
 
+      if (!inBounds(localOff, 30) || dv.getUint32(localOff, true) !== SIG_LOCAL) throw new Error(BROKEN_ZIP);
       const start = localOff + 30 + dv.getUint16(localOff + 26, true) + dv.getUint16(localOff + 28, true);
+      if (!inBounds(start, compSize)) throw new Error(BROKEN_ZIP);
       const raw = u8.subarray(start, start + compSize);
       let data;
-      if (method === 0) data = raw;
-      else if (method === 8) data = await inflateRaw(raw);
-      else throw new Error(`未対応の圧縮形式です（method=${method}）。`);
+      if (method === 0) {
+        if (raw.length > LIMITS.maxXmlBytes) throw new Error(`ZIP内のファイルが大きすぎます（上限 ${MB(LIMITS.maxXmlBytes)}）。`);
+        data = raw;
+      } else if (method === 8) {
+        data = await inflateRaw(raw, LIMITS.maxXmlBytes);
+      } else {
+        throw new Error(`未対応の圧縮形式です（method=${method}）。`);
+      }
       files.push({ name, data });
     }
     return files;
   }
 
+  const isXmlName = name => /\.xml$/i.test(name);
+
   /** ZIP / XML のバイト列から、キャラクターXMLのテキストを [{name, xml}] で取り出す */
   async function extractXmlTexts(buffer, fileName = '') {
     const u8 = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    checkInputSize(u8);
     const utf8 = new TextDecoder('utf-8');
     if (!isZip(u8)) return [{ name: fileName, xml: utf8.decode(u8) }];
-    const xmls = (await unzip(u8))
-      .filter(f => /\.xml$/i.test(f.name))
+    // 画像などは展開しない
+    const xmls = (await unzip(u8, { filter: isXmlName }))
       .map(f => ({ name: f.name, xml: utf8.decode(f.data) }))
-      .filter(f => /<character[\s>]/.test(f.xml));
+      .filter(f => CHARACTER_TAG.test(f.xml));
     if (!xmls.length) throw new Error('ZIP内にユドナリウムのキャラクターXMLが見つかりませんでした。');
     return xmls;
   }
 
   // ---------------------------------------------------------------- XML
+
+  const CHARACTER_TAG = /<character[\s>]/;
+  // ユドナリウムはDTDを出力しない。実体展開による膨張（billion laughs）や外部参照を避けるため拒否する
+  const DTD = /<!DOCTYPE|<!ENTITY/i;
 
   function dataChildren(el) {
     const out = [];
@@ -102,6 +170,7 @@
   function parseUdonariumXml(xmlText, DOMParserImpl) {
     const Parser = DOMParserImpl || (typeof DOMParser !== 'undefined' ? DOMParser : null);
     if (!Parser) throw new Error('DOMParser が利用できません。');
+    if (DTD.test(xmlText)) throw new Error('DTD（<!DOCTYPE>）を含むXMLには対応していません。');
     const doc = new Parser().parseFromString(xmlText, 'application/xml');
     if (doc.getElementsByTagName('parsererror').length) throw new Error('XMLの解析に失敗しました。');
 
@@ -165,20 +234,25 @@
     color: '#888888',
   };
 
+  // パレット中の {ラベル} 参照
+  const REF = /\{([^{}\n]+)\}/g;
+
   function items(parsed, kind) {
     return parsed.sections.flatMap(s => s.items.filter(i => i.kind === kind));
   }
 
-  function findValue(parsed, label) {
+  /** ラベル → 値（同じラベルが複数あれば最初のもの）。メモ・イニシアチブ用 */
+  function valueLookup(parsed) {
+    const map = new Map();
     for (const s of parsed.sections) {
-      const hit = s.items.find(i => i.label === label && (i.kind === 'param' || i.kind === 'resource'));
-      if (hit) return hit.value;
+      for (const i of s.items) {
+        if ((i.kind === 'param' || i.kind === 'resource') && !map.has(i.label)) map.set(i.label, i.value);
+      }
     }
-    return '';
+    return label => map.get(label) || '';
   }
 
-  function buildMemo(parsed, opts) {
-    const v = l => findValue(parsed, l);
+  function buildMemo(parsed, v, opts) {
     const join = (...xs) => xs.filter(Boolean).join(' / ');
     const lines = [];
     if (v('プレイヤー')) lines.push(`PL: ${v('プレイヤー')}`);
@@ -198,15 +272,14 @@
   }
 
   function expandReferences(text, values) {
-    return text.replace(/\{([^{}\n]+)\}/g, (m, key) => (key in values ? values[key] : m));
+    return text.replace(REF, (m, key) => (values.has(key) ? values.get(key) : m));
   }
 
   function buildCommands(parsed, status, params, opts) {
     let text = parsed.palette.replace(/\n+$/, '');
     if (opts.expandRefs) {
-      const values = {};
-      for (const p of params) values[p.label] = p.value;
-      for (const s of status) values[s.label] = s.value;
+      // 同名ならステータス（現在値）を優先
+      const values = new Map([...params, ...status].map(x => [x.label, x.value]));
       text = expandReferences(text, values);
     }
     return text;
@@ -222,13 +295,14 @@
     const opts = { ...DEFAULT_OPTIONS, ...options };
     const status = items(parsed, 'resource').map(r => ({ label: r.label, value: r.value, max: r.max }));
     const params = items(parsed, 'param').map(p => ({ label: p.label, value: p.value }));
+    const v = valueLookup(parsed);
 
     return {
       kind: 'character',
       data: {
         name: parsed.name,
-        memo: buildMemo(parsed, opts),
-        initiative: parseInitiative(findValue(parsed, 'イニシアチブ')),
+        memo: buildMemo(parsed, v, opts),
+        initiative: parseInitiative(v('イニシアチブ')),
         externalUrl: opts.externalUrl || '',
         status,
         params,
@@ -255,12 +329,13 @@
     const d = ccfolia.data;
     const known = new Set([...d.status, ...d.params].map(x => x.label));
     const missing = new Set();
-    for (const m of d.commands.matchAll(/\{([^{}\n]+)\}/g)) if (!known.has(m[1])) missing.add(m[1]);
+    for (const m of d.commands.matchAll(REF)) if (!known.has(m[1])) missing.add(m[1]);
     return [...missing];
   }
 
   return {
     DEFAULT_OPTIONS,
+    LIMITS,
     unzip,
     extractXmlTexts,
     parseUdonariumXml,
