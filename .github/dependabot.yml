@@ -1,18 +1,26 @@
-# 依存関係とアクションの更新を週1回 PR で提案する
+# 依存関係とアクションの定期更新を月1回、種類ごとに1つのPRにまとめて提案する。
+# 脆弱性の修正はリポジトリ設定の「Dependabot security updates」で、見つかり次第すぐ PR が来る（この間隔や cooldown とは無関係）。
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: weekly }
+    schedule: { interval: monthly }
+    # 公開直後の版は取り込まない（乗っ取られたパッケージが公開・削除されるまでの期間を避ける）
+    cooldown: { default-days: 7 }
     groups:
       actions: { patterns: ["*"] }
   - package-ecosystem: npm
     directory: /
-    schedule: { interval: weekly }
+    schedule: { interval: monthly }
+    cooldown: { default-days: 7 }
     groups:
       npm: { patterns: ["*"] }
   - package-ecosystem: pip
     directory: /
-    schedule: { interval: weekly }
+    schedule: { interval: monthly }
+    cooldown: { default-days: 7 }
+    # streamlit>=… のような下限指定は、新しい版がすでに範囲内なので書き換えない（下限を上げるだけのPRを出さない）。
+    # pytest==… のような固定は従来どおり更新する
+    versioning-strategy: increase-if-necessary
     groups:
       pip: { patterns: ["*"] }
