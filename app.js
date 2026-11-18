@@ -99,8 +99,9 @@
       target.addEventListener('pointerdown', () => hideTip(wrap));
     }
   }
-  // 「?」の説明は外側を押すと閉じる
-  document.addEventListener('click', e => {
+  // 「?」の説明は外側を押すと閉じる。click ではなく pointerdown で見る
+  // （WebKit のタッチ操作では、見出しや余白のような押せない場所をタップしても click が起きないため）
+  document.addEventListener('pointerdown', e => {
     for (const wrap of document.querySelectorAll('.has-tip.tip-open')) if (!wrap.contains(e.target)) hideTip(wrap);
   });
   // Esc で開いている説明を閉じる（次にマウスを乗せる・フォーカスする・「?」を押すまで）
