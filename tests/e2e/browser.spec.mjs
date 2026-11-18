@@ -1,7 +1,7 @@
 // ブラウザ版（index.html + app.js + converter.js）のE2Eテスト
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { test, expect, openApp, fixturePath, ORIGIN } from './fixtures.mjs';
+import { test, expect, openApp, fixturePath, ORIGIN, XML_PARSE_ERROR_NOISE } from './fixtures.mjs';
 
 const cards = page => page.locator('#results article');
 const card = (page, name) => cards(page).filter({ has: page.getByRole('heading', { name }) });
@@ -71,8 +71,10 @@ test('出力オプションで結果が変わる', async ({ page }) => {
   await expect(attacks.locator('[data-f="json"]')).toContainText('"color": "#336699"');
 });
 
-test('コピーするとクリップボードにJSONが入り、少しするとボタン表示が戻る', async ({ page, context }) => {
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: ORIGIN });
+test('コピーするとクリップボードにJSONが入り、少しするとボタン表示が戻る', async ({ page, context, browserName }) => {
+  // クリップボードの中身を読み返せるのは Chromium だけ（Firefox / WebKit は自動操作で読み取り権限を付けられない）
+  const canReadBack = browserName === 'chromium';
+  if (canReadBack) await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: ORIGIN });
   await page.clock.install(); // ボタン表示を戻すタイマーを実時間に依存させない
   await upload(page, 'sorcerer.zip');
   const btn = cards(page).first().getByRole('button', { name: 'ココフォリア用にコピー' });
@@ -80,9 +82,11 @@ test('コピーするとクリップボードにJSONが入り、少しすると�
   await expect(page.locator('#msg')).toHaveText('「テスト・ソーサラー」をコピーしました。ココフォリアの盤面で貼り付けてください。');
   await expect(cards(page).first().locator('[data-a="copy"]')).toHaveText('コピーしました ✓');
 
-  const pasted = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
-  expect(pasted.kind).toBe('character');
-  expect(pasted.data.name).toBe('テスト・ソーサラー');
+  if (canReadBack) {
+    const pasted = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
+    expect(pasted.kind).toBe('character');
+    expect(pasted.data.name).toBe('テスト・ソーサラー');
+  }
 
   await page.clock.runFor(2000);
   await expect(cards(page).first().locator('[data-a="copy"]')).toHaveText('ココフォリア用にコピー');
@@ -99,20 +103,25 @@ test('JSONを保存できる', async ({ page }) => {
   expect(saved.data.name).toBe('テスト・ソーサラー');
 });
 
-test('読めないファイルはエラーを表示し、読めたものは表示する', async ({ page }) => {
-  const file = name => ({ name, mimeType: 'application/octet-stream', buffer: readFileSync(fixturePath(name)) });
-  await page.locator('#file-input').setInputFiles([
-    file('attacks.xml'),
-    { name: 'broken.xml', mimeType: 'text/xml', buffer: Buffer.from('not xml') },
-    file('bomb.zip'),
-  ]);
-  const m = page.locator('#msg');
-  await expect(m).toHaveClass(/err/);
-  await expect(m).toContainText('変換しました（1体）。');
-  await expect(m).toContainText('broken.xml: XMLの解析に失敗しました。');
-  await expect(m).toContainText('bomb.zip: ZIP内のファイルが大きすぎます');
-  await expect(cards(page)).toHaveCount(1);
+test.describe('読めないファイル', () => {
+  test.use({ allowedConsole: XML_PARSE_ERROR_NOISE });
+
+  test('エラーを表示し、読めたものは表示する', async ({ page }) => {
+    const file = name => ({ name, mimeType: 'application/octet-stream', buffer: readFileSync(fixturePath(name)) });
+    await page.locator('#file-input').setInputFiles([
+      file('attacks.xml'),
+      { name: 'broken.xml', mimeType: 'text/xml', buffer: Buffer.from('not xml') },
+      file('bomb.zip'),
+    ]);
+    const m = page.locator('#msg');
+    await expect(m).toHaveClass(/err/);
+    await expect(m).toContainText('変換しました（1体）。');
+    await expect(m).toContainText('broken.xml: XMLの解析に失敗しました。');
+    await expect(m).toContainText('bomb.zip: ZIP内のファイルが大きすぎます');
+    await expect(cards(page)).toHaveCount(1);
+  });
 });
+
 
 test.describe('ツールチップヘルプ', () => {
   test('マウスを乗せると出て、Esc で閉じる', async ({ page }) => {

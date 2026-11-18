@@ -1,0 +1,53 @@
+# ブラウザ版の E2E を Firefox / WebKit（Safari のエンジン）でも回す。
+# 時間がかかるので、ブラウザ版に関わるファイルを変えた PR のときだけ動く（Chromium は test.yml で毎回動く）。
+name: E2E (Firefox / WebKit)
+
+on:
+  pull_request:
+    paths:
+      - index.html
+      - app.js
+      - style.css
+      - converter.js
+      - tests/e2e/**
+      - tests/fixtures/**
+      - playwright.config.mjs
+      - package-lock.json
+      - .github/workflows/e2e-cross-browser.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E（${{ matrix.browser }}）
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      # ブラウザごとに別のジョブにする。macOS で Firefox と WebKit を同時に動かすと、
+      # WebKit のクリック・ホバーが失敗することがあるため（アプリの不具合ではない）
+      matrix:
+        browser: [firefox, webkit]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npx playwright test --project=${{ matrix.browser }}
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-traces-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 7
