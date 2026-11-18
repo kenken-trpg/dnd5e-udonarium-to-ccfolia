@@ -17,11 +17,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# 3つのジョブは並行して動く
+# 3つのジョブは並行して動く。ジョブ名（name）はブランチ保護の必須チェックに登録しているので変えないこと。
+# ランナーは ubuntu-latest ではなく版を固定する（OS の切り替わりで、ブラウザが必要とするライブラリが急に変わらないように）
 jobs:
   lint:
     name: Lint（ESLint）
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -36,7 +37,7 @@ jobs:
 
   unit:
     name: 単体テスト
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,7 +52,7 @@ jobs:
 
   e2e-browser:
     name: E2E（ブラウザ版）
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -62,9 +63,27 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund --prefer-offline
-      # 必要なのはヘッドレス版の Chromium だけ。ブラウザをキャッシュしても、
-      # 復元後に OS の依存パッケージを入れる時間（約20秒）の方が、毎回ダウンロードする時間（約13秒）より長いのでキャッシュしない
-      - run: npx playwright install --with-deps --only-shell chromium
+      # 必要なのはヘッドレス版の Chromium だけ。Playwright の版ごとにキャッシュする（版が上がるとキーが変わり、取り直す）
+      - name: Playwright の版を調べる
+        id: playwright
+        run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium-headless-shell
+      # キャッシュがあれば何もしない
+      - run: npx playwright install --only-shell chromium
+      # --with-deps（apt で OS のライブラリを入れる）は、ふだん約20秒、apt のミラーが遅いと3分以上かかる。
+      # ランナーのイメージには Chrome が入っていて必要なライブラリはほぼそろっているので、足りないときだけ入れる
+      - name: 足りない OS のライブラリだけ入れる
+        timeout-minutes: 5
+        run: |
+          shell=$(find ~/.cache/ms-playwright -type f -name chrome-headless-shell -perm -u+x | head -n 1)
+          if [ -n "$shell" ] && ! ldd "$shell" | grep -q 'not found'; then
+            echo "OS のライブラリはそろっている"
+          else
+            npx playwright install-deps chromium
+          fi
       - run: npm run test:e2e
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

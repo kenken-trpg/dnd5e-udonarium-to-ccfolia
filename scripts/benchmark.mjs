@@ -1,4 +1,5 @@
-// 実ブラウザで、XML解析・変換・DOM更新とファイル選択から表示完了までを分けて測る。
+// 実ブラウザで、XML解析・変換・DOM更新、アプリ内の読み込み全体、ファイル選択から表示完了までを分けて測る。
+// 使い方: npm run benchmark [-- 保存先.json]（詳細は docs/performance.md）
 import { chromium, expect } from '@playwright/test';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -33,7 +34,7 @@ try {
       await expect(page.locator('#results article')).toHaveCount(count);
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const totalMs = performance.now() - start;
-      const timings = await page.evaluate(() => Object.fromEntries(['parse', 'convert', 'display'].map(name => [
+      const timings = await page.evaluate(() => Object.fromEntries(['parse', 'convert', 'display', 'load'].map(name => [
         name + 'Ms', performance.getEntriesByName(`udon:${name}`).reduce((sum, entry) => sum + entry.duration, 0),
       ])));
       if (run) runs.push({ totalMs, ...timings });
@@ -49,7 +50,7 @@ try {
     environment: { node: process.version, browser: browser.version(), os: `${platform()} ${arch()}`, cpu: cpus()[0]?.model, viewport: '1280x800' },
     fixture: { name: 'attacks.xml', sha256: createHash('sha256').update(fixture).digest('hex') },
     workloads: workloads.map(workload => ({ name: workload.name, bytesPerCharacter: workload.buffer.length, sha256: createHash('sha256').update(workload.buffer).digest('hex') })),
-    methodology: '1回ウォームアップ後5回。totalMsは自動操作・ファイル読み込み・待機・2描画フレームを含む。parse/convert/displayはアプリ内の同期処理のみ。displayはJSON整形・診断・DOM更新を含み、描画完了時間とは異なる。各中央値は独立で、合計と一致するとは限らない。',
+    methodology: '1回ウォームアップ後5回。totalMsは自動操作・ファイル転送・待機・2描画フレームを含む。loadMsはアプリがファイルを受け取ってから全件の処理を終えるまで（ファイルの読み取り・展開・解析・表示・処理の譲渡を含み、自動操作の転送は含まない）。parse/convert/displayはアプリ内の同期処理のみ。displayはJSON整形・診断・DOM更新を含み、描画完了時間とは異なる。各中央値は独立で、合計と一致するとは限らない。',
     samples,
   };
   await mkdir(dirname(destination), { recursive: true });

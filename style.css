@@ -91,6 +91,9 @@ mark { background: #ffe08a; color: #211f1c; }
 mark:focus { outline: 2px solid var(--accent); }
 .manual h2, .manual h3 { margin-top: 1.5em; }
 .manual nav { margin: 1em 0; }
+.manual .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; }
+.manual .toc h2 { margin: 0 0 4px; font-size: 1rem; }
+.manual .toc ul { margin: 0; padding-left: 1.4em; }
 .manual p, .manual li, .manual a { overflow-wrap: anywhere; }
 .table-scroll { overflow-x: auto; }
 .manual table { border-collapse: collapse; width: 100%; }
@@ -102,7 +105,9 @@ footer p { margin: 0 0 4px; }
 
 /* ---- ツールチップヘルプ
  * .has-tip の中の最初のボタン等にマウスを乗せるか、キーボードでフォーカスすると .tip を表示する。
- * Esc で閉じる（app.js）。表示・非表示にアニメーションは付けない（E2Eの待ちを不要にするため）。 */
+ * Esc で閉じる（app.js）。表示・非表示にアニメーションは付けない（E2Eの待ちを不要にするため）。
+ * マウスで出したときは、説明の上にマウスを動かしても消えない（WCAG 1.4.13）。フォーカスだけで出しているときは
+ * 説明がクリックを横取りしないよう pointer-events: none にする。 */
 .has-tip { position: relative; display: inline-flex; align-items: center; gap: 6px; }
 h2.has-tip, div.has-tip { display: flex; }
 div.has-tip { margin-bottom: 14px; }
@@ -115,6 +120,11 @@ div.has-tip > .chips { margin-bottom: 0; }
   box-shadow: 0 4px 14px rgb(0 0 0 / .18); visibility: hidden; display: none; pointer-events: none;
 }
 .has-tip:hover > .tip, .has-tip:focus-within > .tip { visibility: visible; display: block; }
+.has-tip:hover > .tip { pointer-events: auto; }
+/* 対象と説明の間の隙間でマウスが外れないよう、隙間を埋める見えない帯 */
+.tip::before { content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 8px; }
+.has-tip.tip-above > .tip { top: auto; bottom: calc(100% + 6px); }
+.has-tip.tip-above > .tip::before { top: auto; bottom: -8px; }
 .has-tip.tip-off > .tip { visibility: hidden; display: none; }
 .tip-btn {
   font: 600 .72rem/1 inherit; width: 18px; height: 18px; padding: 0; border-radius: 50%;

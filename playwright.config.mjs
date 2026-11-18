@@ -14,6 +14,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: CI,
   retries: 0,
+  // CI は2並列。4並列（ランナーは4コア）も試したが、ブラウザとテスト本体でコアを取り合い、速くならなかった
   workers: CI ? 2 : undefined,
   timeout: 15_000,
   expect: { timeout: 5_000 },

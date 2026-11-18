@@ -30,10 +30,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # コンテナのイメージを package-lock.json の Playwright と同じ版にするため、先に版を読む
+  # （Dependabot が Playwright を上げても、イメージの版を手で直さなくてよい）
+  version:
+    name: Playwright の版を調べる
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      playwright: ${{ steps.version.outputs.playwright }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: package-lock.json
+          sparse-checkout-cone-mode: false
+      - id: version
+        run: echo "playwright=$(jq -r '.packages["node_modules/@playwright/test"].version' package-lock.json)" >> "$GITHUB_OUTPUT"
+
   e2e:
     name: E2E（${{ matrix.browser }}）
-    runs-on: ubuntu-latest
+    needs: version
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # Firefox / WebKit は OS のライブラリ（GStreamer など）がランナーに無い。apt で入れるとふだん約30秒、
+    # ミラーが遅いと3分以上かかり、途中で止まることもあったので、ブラウザと OS のライブラリが入った公式イメージを使う。
+    # --user 1001: root で Firefox を動かさない（Playwright の推奨）。ランナーの作業フォルダの所有者とも一致する
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.version.outputs.playwright }}-noble
+      options: --user 1001
     strategy:
       fail-fast: false
       # ブラウザごとに別のジョブにする。macOS で Firefox と WebKit を同時に動かすと、
@@ -44,12 +68,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund --prefer-offline
-      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      # Node.js はイメージに入っている
+      - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npx playwright test --project=${{ matrix.browser }}
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

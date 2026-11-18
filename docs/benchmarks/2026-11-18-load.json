@@ -1,0 +1,323 @@
+{
+  "measuredAt": "2026-11-18T08:58:45.230Z",
+  "environment": {
+    "node": "v24.14.1",
+    "browser": "159.0.8154.6",
+    "os": "darwin arm64",
+    "cpu": "Apple A18 Pro",
+    "viewport": "1280x800"
+  },
+  "fixture": {
+    "name": "attacks.xml",
+    "sha256": "9a2f92775b4545bddb7bae83ee9fc57b87d979592f68f17669c12f040216e59f"
+  },
+  "workloads": [
+    {
+      "name": "standard",
+      "bytesPerCharacter": 8755,
+      "sha256": "9a2f92775b4545bddb7bae83ee9fc57b87d979592f68f17669c12f040216e59f"
+    },
+    {
+      "name": "large-palette",
+      "bytesPerCharacter": 270904,
+      "sha256": "45c3448c08ca3d0a141272f6fdf709355efbd2d9421d2273ab60bf4ed007954e"
+    }
+  ],
+  "methodology": "1回ウォームアップ後5回。totalMsは自動操作・ファイル転送・待機・2描画フレームを含む。loadMsはアプリがファイルを受け取ってから全件の処理を終えるまで（ファイルの読み取り・展開・解析・表示・処理の譲渡を含み、自動操作の転送は含まない）。parse/convert/displayはアプリ内の同期処理のみ。displayはJSON整形・診断・DOM更新を含み、描画完了時間とは異なる。各中央値は独立で、合計と一致するとは限らない。",
+  "samples": [
+    {
+      "workload": "standard",
+      "characters": 1,
+      "inputBytes": 8755,
+      "medians": {
+        "totalMs": 32.86,
+        "parseMs": 0.3,
+        "convertMs": 0,
+        "displayMs": 0.1,
+        "loadMs": 0.7
+      },
+      "runs": [
+        {
+          "totalMs": 32.144124999999974,
+          "parseMs": 0.19999999925494194,
+          "convertMs": 0.10000000149011612,
+          "displayMs": 0,
+          "loadMs": 0.6999999992549419
+        },
+        {
+          "totalMs": 32.921291999999994,
+          "parseMs": 0.30000000074505806,
+          "convertMs": 0,
+          "displayMs": 0,
+          "loadMs": 0.5999999977648258
+        },
+        {
+          "totalMs": 33.06483300000002,
+          "parseMs": 0.19999999925494194,
+          "convertMs": 0,
+          "displayMs": 0.10000000149011612,
+          "loadMs": 0.6999999992549419
+        },
+        {
+          "totalMs": 32.50637499999999,
+          "parseMs": 0.3999999985098839,
+          "convertMs": 0,
+          "displayMs": 0.09999999776482582,
+          "loadMs": 0.8999999985098839
+        },
+        {
+          "totalMs": 32.85537500000004,
+          "parseMs": 0.30000000074505806,
+          "convertMs": 0,
+          "displayMs": 0.10000000149011612,
+          "loadMs": 0.6999999992549419
+        }
+      ]
+    },
+    {
+      "workload": "standard",
+      "characters": 10,
+      "inputBytes": 87550,
+      "medians": {
+        "totalMs": 49.5,
+        "parseMs": 2.1,
+        "convertMs": 0.1,
+        "displayMs": 0.6,
+        "loadMs": 6.2
+      },
+      "runs": [
+        {
+          "totalMs": 49.28170799999998,
+          "parseMs": 2.199999999254942,
+          "convertMs": 0.10000000149011612,
+          "displayMs": 0.5999999977648258,
+          "loadMs": 6.199999999254942
+        },
+        {
+          "totalMs": 66.190875,
+          "parseMs": 2.2999999970197678,
+          "convertMs": 0,
+          "displayMs": 0.5999999940395355,
+          "loadMs": 8.399999998509884
+        },
+        {
+          "totalMs": 49.383583000000044,
+          "parseMs": 1.8000000081956387,
+          "convertMs": 0.19999999925494194,
+          "displayMs": 0.30000000447034836,
+          "loadMs": 6.100000001490116
+        },
+        {
+          "totalMs": 49.64129200000002,
+          "parseMs": 2.099999997764826,
+          "convertMs": 0,
+          "displayMs": 0.5999999940395355,
+          "loadMs": 6.399999998509884
+        },
+        {
+          "totalMs": 49.50466600000004,
+          "parseMs": 1.800000000745058,
+          "convertMs": 0.19999999925494194,
+          "displayMs": 0.8000000007450581,
+          "loadMs": 5.800000000745058
+        }
+      ]
+    },
+    {
+      "workload": "standard",
+      "characters": 50,
+      "inputBytes": 437750,
+      "medians": {
+        "totalMs": 82.69,
+        "parseMs": 6.3,
+        "convertMs": 0.3,
+        "displayMs": 1.3,
+        "loadMs": 19.4
+      },
+      "runs": [
+        {
+          "totalMs": 83.09854200000007,
+          "parseMs": 6.300000015646219,
+          "convertMs": 0.30000000074505806,
+          "displayMs": 0.9999999925494194,
+          "loadMs": 18.700000002980232
+        },
+        {
+          "totalMs": 82.69137500000011,
+          "parseMs": 6.399999998509884,
+          "convertMs": 0.09999999776482582,
+          "displayMs": 1.6000000014901161,
+          "loadMs": 19
+        },
+        {
+          "totalMs": 66.22204099999999,
+          "parseMs": 5.600000001490116,
+          "convertMs": 0.19999999925494194,
+          "displayMs": 1.900000013411045,
+          "loadMs": 22.400000002235174
+        },
+        {
+          "totalMs": 82.9357500000001,
+          "parseMs": 6.5,
+          "convertMs": 0.3999999985098839,
+          "displayMs": 1.2000000141561031,
+          "loadMs": 19.899999998509884
+        },
+        {
+          "totalMs": 66.07500000000005,
+          "parseMs": 5.599999997764826,
+          "convertMs": 0.6999999955296516,
+          "displayMs": 1.2999999970197678,
+          "loadMs": 19.400000002235174
+        }
+      ]
+    },
+    {
+      "workload": "large-palette",
+      "characters": 1,
+      "inputBytes": 270904,
+      "medians": {
+        "totalMs": 49.57,
+        "parseMs": 1.4,
+        "convertMs": 0,
+        "displayMs": 0.5,
+        "loadMs": 2.7
+      },
+      "runs": [
+        {
+          "totalMs": 49.684708999999884,
+          "parseMs": 1.3999999985098839,
+          "convertMs": 0,
+          "displayMs": 0.5,
+          "loadMs": 2.800000000745058
+        },
+        {
+          "totalMs": 49.57395900000006,
+          "parseMs": 1.3999999985098839,
+          "convertMs": 0.10000000149011612,
+          "displayMs": 0.5,
+          "loadMs": 2.5
+        },
+        {
+          "totalMs": 49.47466700000018,
+          "parseMs": 1.3999999985098839,
+          "convertMs": 0.10000000149011612,
+          "displayMs": 0.5,
+          "loadMs": 2.599999997764826
+        },
+        {
+          "totalMs": 50.09674999999993,
+          "parseMs": 1.3999999985098839,
+          "convertMs": 0,
+          "displayMs": 0.6000000014901161,
+          "loadMs": 3.100000001490116
+        },
+        {
+          "totalMs": 49.032917,
+          "parseMs": 1.4000000022351742,
+          "convertMs": 0,
+          "displayMs": 0.6999999992549419,
+          "loadMs": 2.699999999254942
+        }
+      ]
+    },
+    {
+      "workload": "large-palette",
+      "characters": 10,
+      "inputBytes": 2709040,
+      "medians": {
+        "totalMs": 183.07,
+        "parseMs": 10.9,
+        "convertMs": 0.2,
+        "displayMs": 3.6,
+        "loadMs": 22.4
+      },
+      "runs": [
+        {
+          "totalMs": 183.073625,
+          "parseMs": 10.900000002235174,
+          "convertMs": 0.09999999776482582,
+          "displayMs": 4.199999999254942,
+          "loadMs": 22.899999998509884
+        },
+        {
+          "totalMs": 165.6066249999999,
+          "parseMs": 11.300000004470348,
+          "convertMs": 0.5,
+          "displayMs": 3.6000000052154064,
+          "loadMs": 22.399999998509884
+        },
+        {
+          "totalMs": 183.39666599999964,
+          "parseMs": 10.699999999254942,
+          "convertMs": 0.09999999776482582,
+          "displayMs": 3.600000001490116,
+          "loadMs": 20.899999998509884
+        },
+        {
+          "totalMs": 183.0118749999997,
+          "parseMs": 10.399999998509884,
+          "convertMs": 0.20000000298023224,
+          "displayMs": 3.5,
+          "loadMs": 19.799999997019768
+        },
+        {
+          "totalMs": 183.13966699999992,
+          "parseMs": 11.800000000745058,
+          "convertMs": 0.4000000022351742,
+          "displayMs": 4.2000000067055225,
+          "loadMs": 24.699999999254942
+        }
+      ]
+    },
+    {
+      "workload": "large-palette",
+      "characters": 50,
+      "inputBytes": 13545200,
+      "medians": {
+        "totalMs": 832.41,
+        "parseMs": 55.9,
+        "convertMs": 1.1,
+        "displayMs": 19.4,
+        "loadMs": 107.8
+      },
+      "runs": [
+        {
+          "totalMs": 833.1510839999996,
+          "parseMs": 55.900000009685755,
+          "convertMs": 0.8999999985098839,
+          "displayMs": 20.400000005960464,
+          "loadMs": 108.60000000149012
+        },
+        {
+          "totalMs": 832.4063749999996,
+          "parseMs": 58.30000000819564,
+          "convertMs": 1.1000000014901161,
+          "displayMs": 19.399999994784594,
+          "loadMs": 113.60000000149012
+        },
+        {
+          "totalMs": 815.0465839999997,
+          "parseMs": 54.29999999701977,
+          "convertMs": 1.0999999977648258,
+          "displayMs": 18.799999989569187,
+          "loadMs": 100.80000000074506
+        },
+        {
+          "totalMs": 833.4998340000002,
+          "parseMs": 54.00000001117587,
+          "convertMs": 1.1999999955296516,
+          "displayMs": 19.399999998509884,
+          "loadMs": 107.80000000074506
+        },
+        {
+          "totalMs": 815.9854590000004,
+          "parseMs": 58.29999998956919,
+          "convertMs": 0.8999999910593033,
+          "displayMs": 20.199999999254942,
+          "loadMs": 107.29999999701977
+        }
+      ]
+    }
+  ]
+}

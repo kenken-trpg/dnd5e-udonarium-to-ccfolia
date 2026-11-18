@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""このリポジトリのマニュアルで使うMarkdownを静的HTMLにする（外部依存なし）。"""
+"""このリポジトリのマニュアルで使うMarkdownを静的HTMLにする（外部依存なし）。
+
+使い方: python3 scripts/build-manual.py 出力先.html
+対応する記法は docs/manual.md で使っている見出し・段落・リスト・表・リンク・コード・太字だけ。
+h2 見出しから目次を作り、h1 の直後に置く。
+"""
 import html
 import re
 import sys
@@ -26,9 +31,14 @@ def inline(text):
     return "".join(parts)
 
 
+def slugify(text):
+    return re.sub(r"[^\w\s-]", "", text.lower()).replace(" ", "-")
+
+
 def render(source):
     lines = source.splitlines()
     output = []
+    toc = []
     i = 0
     list_item = re.compile(r"^(\s*)([-*]|\d+\.)\s+(.+)$")
 
@@ -68,8 +78,12 @@ def render(source):
             i += 1
         elif heading:
             level, text = len(heading[1]), heading[2]
-            slug = re.sub(r"[^\w\s-]", "", text.lower()).replace(" ", "-")
+            slug = slugify(text)
             output.append(f'<h{level} id="{slug}">{inline(text)}</h{level}>')
+            if level == 1:
+                output.append(TOC_MARKER)
+            elif level == 2:
+                toc.append(f'<li><a href="#{slug}">{inline(text)}</a></li>')
             i += 1
         elif line == "---":
             output.append("<hr>")
@@ -98,7 +112,11 @@ def render(source):
                 paragraph.append(lines[i].strip())
                 i += 1
             output.append("<p>" + inline(" ".join(paragraph)) + "</p>")
-    return "\n".join(output)
+    nav = '<nav class="toc" aria-label="目次"><h2 id="目次">目次</h2><ul>' + "".join(toc) + "</ul></nav>"
+    return "\n".join(output).replace(TOC_MARKER, nav if toc else "", 1)
+
+
+TOC_MARKER = "<!--toc-->"
 
 
 if __name__ == "__main__":
@@ -107,7 +125,7 @@ if __name__ == "__main__":
     page = '''<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types 'none'">
 <meta name="referrer" content="no-referrer">
 <title>D&amp;D5e ココフォリア変換 マニュアル</title>
 <link rel="stylesheet" href="style.css"></head>

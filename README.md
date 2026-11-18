@@ -41,15 +41,19 @@
 
 | ファイル | 役割 |
 |---|---|
-| `index.html` / `style.css` / `app.js` | UI（画面・見た目・操作） |
+| `index.html` / `style.css` / `app.js` | UI（画面・見た目・操作・ツールチップ） |
+| `converter.js` | 変換ロジック・入力の上限（ブラウザ・Node 共用） |
 | `archive.js` | 一括保存用のUTF-8 ZIP生成・ファイル名の安全化 |
-| `scripts/benchmark.mjs` | 実ブラウザの性能計測 |
-| `converter.js` | 変換ロジック（ブラウザ・Node 共用） |
-| `tests/` | テストと、生成ツールが実際に出力したサンプル（`fixtures/`） |
-| `docs/manual.md` | 利用者向けマニュアル |
+| `tests/` | テストと、生成ツールが実際に出力したサンプル（`fixtures/`）・期待JSON（`fixtures/expected/`） |
+| `docs/manual.md` | 利用者向けマニュアル（公開ページ・配布ZIPでは `manual.html` になる） |
+| `docs/offline-readme.txt` | 配布ZIPに入れる説明書（`README.txt`） |
+| `docs/performance.md` / `docs/benchmarks/` | 性能計測の方法と結果 |
 | `scripts/build-site.sh` | GitHub Pages の配信物（アプリ・HTMLマニュアルと、手元で使うためのZIP）を作る |
-| `docs/offline-readme.txt` | ZIPに入れる説明書（`README.txt`） |
+| `scripts/build-manual.py` | `docs/manual.md` を目次付きの静的HTMLにする（このマニュアルで使う記法だけに対応） |
+| `scripts/benchmark.mjs` | 実ブラウザの性能計測 |
 | `streamlit_app.py` / `requirements.txt` / `.streamlit/` | 終了した Streamlit版の公開URLで、ブラウザ版へ案内するだけのページ（下記） |
+
+配布ビルドには Python 3・bash・zip を使う。`scripts/build-site.sh` で作った `_site/index.html` を開くと、マニュアルも含めて公開ページと同じものを手元で確かめられる。
 
 ### Streamlit版について
 
@@ -62,9 +66,9 @@ Streamlit Community Cloud からアプリを削除したら、`streamlit_app.py`
 
 ```sh
 npm ci
-npm test                         # ブラウザ版の変換ロジック（node:test）
+npm test                         # 単体テスト（node:test）
 npx playwright install chromium  # 初回だけ
-npm run test:e2e                 # ブラウザ版のE2E（Playwright, Chromium）
+npm run test:e2e                 # E2E（Playwright, Chromium）
 npx playwright install firefox webkit  # 初回だけ
 npm run test:e2e:all             # Chromium / Firefox / WebKit（Safari のエンジン）すべて
 npm run lint                     # ESLint
@@ -72,39 +76,61 @@ npm run lint                     # ESLint
 
 | テスト | 内容 |
 |---|---|
-| `tests/archive.test.mjs` | ZIPの標準リーダー互換性・CRC・ファイル名の安全性 |
-| `tests/compatibility.test.mjs` | 期待JSONとの比較・特殊な入力の検証 |
-| `tests/e2e/results.spec.mjs` | 警告・ZIP保存・削除・進捗・中断と選び直し |
-| `tests/convert.test.mjs` | `converter.js` の単体テスト（安全対策を含む） |
-| `tests/e2e/browser.spec.mjs` | ブラウザ版を実際のブラウザで操作する（読み込み・ドロップ・オプション・コピー・保存・ツールチップ・`file://`） |
-| `tests/e2e/a11y.spec.mjs` | アクセシビリティの自動チェック（axe-core、WCAG 2.1 AA）。初期画面・変換結果・ツールチップ表示中を、ライト／ダークの両方で |
+| `tests/convert.test.mjs` | `converter.js` の単体テスト（ZIP爆弾・壊れたZIP・DTD などの安全対策を含む） |
+| `tests/compatibility.test.mjs` | 5種類の入力を、既定・参照展開とメモありの2設定で期待JSONと比べる。警告（未解決参照・重複）の検出 |
+| `tests/archive.test.mjs` | 一括保存ZIPを Python 標準の ZIP リーダーで独立に検証（CRC・UTF-8の名前）。ファイル名の安全化 |
+| `tests/csp.test.mjs` | `index.html`・`manual.html` の CSP に必須の指定があり、インラインスクリプトなどが無いこと |
+| `tests/e2e/browser.spec.mjs` | 実際のブラウザで操作する（読み込み・ドロップ・オプション・コピー・保存・ツールチップ・`file://`・配布ZIP・Trusted Types） |
+| `tests/e2e/results.spec.mjs` | 警告・一括保存（保存したZIPの中身も確かめる）・削除・進捗・中断と選び直し・期待JSONとの一致 |
+| `tests/e2e/a11y.spec.mjs` | アクセシビリティの自動チェック（axe-core、WCAG 2.1 AA）。主な画面の状態を、ライト／ダークの両方で（Chromium のみ） |
 
-E2Eテストは不安定（flaky）にならないよう、次の決まりで書いている。
+期待JSON（`tests/fixtures/expected/`）を変えるときは、入力と変換仕様を確かめてから差分をレビューする。自動で上書きする更新コマンドはあえて用意していない。
+
+#### E2Eテストを不安定（flaky）にしないための決まり
 
 - **サーバーを起動しない**: `page.route` でファイルを直接返す。ポート競合や起動待ちが無い。
 - **時間で待たない**: `waitForTimeout` や `sleep` は使わず、条件が満たされるまで自動で待つアサーション（`expect(locator).toHaveText(...)` など）だけを使う。
   ページの初期化は `<html data-ready="true">` を待つ。
+- **読み込みが終わってから操作する**: ファイルは `tests/e2e/fixtures.mjs` の `upload()` で選ぶ。読み込みの完了（進捗表示が消える）まで待つので、結果の追加と次の操作が競合しない
+  （読み込み中にクリックすると、WebKit でクリックが終わらなくなることがあった）。読み込み中の状態を確かめるテストだけ `setInputFiles` を直接使う。
 - **タイマーは偽の時計で進める**: 「コピーしました ✓」が元に戻るような表示は `page.clock` で時間を進めて確かめる。
+- **OS の共有資源に触らない**: コピーのテストはブラウザ内で Clipboard API を差し替える（OS のクリップボードや権限設定による競合を避ける）。
+  実際のクリップボードへの貼り付けは、公開ページとダウンロード版で手動で確かめる。
 - **リトライしない**: 失敗を隠さないよう `retries: 0`。失敗したテストのトレースは CI の成果物（`playwright-traces`）に残る。
 - **ページ内のエラーを見逃さない**: コンソールのエラー・警告、CSP違反、外部への通信があればテストを失敗にする。
   ブラウザ自身が出すアプリと無関係な出力だけを `tests/e2e/fixtures.mjs` で除外し、特定のテストでだけ出る出力は `test.use({ allowedConsole: /…/ })` で明示する。
+- **複数の Playwright コマンドを同時に動かさない**: 成果物フォルダや macOS のブラウザ操作が競合する。E2E とベンチマークも順番に実行する。
 - **macOS では Firefox を閉じてから WebKit を回す**: macOS で Firefox が動いていると、WebKit のクリック・ホバーのテストが失敗することがある
-  （テスト用の Firefox を同時に動かしたとき、普段使いの Firefox を開いていたときに起きた。WebKit 単独や Chromium との組み合わせでは起きない。アプリの不具合ではない）。
-  `npm run test:e2e:all` は WebKit を最後に単独で回し、CI（Linux）はブラウザごとに別のジョブにしている。
+  （アプリの不具合ではない）。`npm run test:e2e:all` は WebKit を最後に1ワーカーで単独で回し、CI（Linux）はブラウザごとに別のジョブにしている。
 
-新しいE2Eテストを足したら、`npx playwright test --repeat-each=30 --workers=8` で何度回しても通ることを確かめる。
+新しいE2Eテストを足したら、何度回しても通ることを確かめる。
+
+```sh
+npx playwright test --project=chromium --repeat-each=20 --workers=10
+npx playwright test --project=firefox --repeat-each=8 --workers=6
+npx playwright test --project=webkit --repeat-each=6
+```
 
 ### CI
 
-`.github/workflows/test.yml` が main への push と PR で動く。
-3つのジョブ（Lint / 単体テスト / ブラウザ版E2E）が並行して動き、npm はキャッシュする（Playwright のブラウザは、キャッシュから戻すより毎回入れる方が速いのでキャッシュしない）。
-同じブランチに続けて push すると、古い実行は取り消される。
+`.github/workflows/test.yml` が main への push とすべての PR で動く。3つのジョブ（Lint / 単体テスト / ブラウザ版E2E）が並行して動く。
+
+- npm はダウンロードのキャッシュを使う（`npm ci --prefer-offline`）。
+- E2E の Chromium（ヘッドレス版）は Playwright の版ごとにキャッシュする。
+- OS のライブラリは、足りないときだけ apt で入れる（ランナーのイメージにほぼそろっている）。
+  以前は毎回 `--with-deps` で入れていて、ふだん約20秒、apt のミラーが遅いときは3分以上かかっていた。
+- E2E は2並列で回す（4並列はコアの取り合いで速くならなかった）。
+- ランナーは `ubuntu-24.04` に固定している（`ubuntu-latest` の OS が切り替わったとき、ブラウザに必要なライブラリが急に変わらないように）。
+- 同じブランチに続けて push すると、古い実行は取り消される。
 
 **main はブランチ保護されている。** main へ直接 push することはできず、変更は PR で入れる。
 上の3つのジョブがすべて成功しないとマージできない（管理者も同じ）。強制 push と削除も禁止している。
+必須チェックはジョブ名で登録しているので、ジョブ名（`Lint（ESLint）`・`単体テスト`・`E2E（ブラウザ版）`）は変えないこと。
 
 `.github/workflows/e2e-cross-browser.yml` は、ブラウザ版に関わるファイル（`index.html`・`app.js`・`style.css`・`converter.js`・E2Eテストなど）を変えた PR のときだけ、
-Firefox と WebKit で E2E を回す（Actions タブから手動でも実行できる）。
+Firefox と WebKit で E2E を回す（Actions タブから手動でも実行できる）。この2つは OS のライブラリ（GStreamer など）がランナーに無く、
+apt で入れると遅く止まることもあるので、ブラウザとライブラリが入った Playwright の公式コンテナ（`mcr.microsoft.com/playwright`）で動かす。
+コンテナの版は `package-lock.json` の `@playwright/test` から決めるので、Dependabot が Playwright を上げても手で直す必要はない。
 
 ### GitHub Pages
 
@@ -118,47 +144,32 @@ Firefox と WebKit で E2E を回す（Actions タブから手動でも実行で
 利用者が持ち込むファイルを信用しない前提で作っている。
 
 - **CSP**: `index.html` の Content Security Policy で、インラインスクリプト・外部スクリプト・外部への通信（`connect-src 'none'`）を禁止している。
-  UIのコードを `app.js` に分けているのはこのため。`index.html` に `<script>` や `style="…"` を直接書かないこと。
-- **XSS 対策**: ファイル由来の文字列は `textContent` でだけ表示する。
-- **ZIP爆弾・巨大ファイル対策**: 入力ファイル・ZIP内のファイル数・展開後のXMLの大きさに上限があり、展開は上限に達した時点で打ち切る。XML以外のエントリは展開しない。
+  UIのコードを `app.js` に分けているのはこのため。`index.html` に `<script>` や `style="…"` を直接書かないこと（`tests/csp.test.mjs` が確かめる）。
+- **Trusted Types**: CSP の `require-trusted-types-for 'script'` で、`innerHTML` などへの文字列の代入を対応ブラウザ（Chromium・Firefox・Safari の新しい版）で禁止している。
+  例外は XML の解析（`DOMParser`）に使う `udon-xml` ポリシーだけ（`converter.js`）。解析した文書はスクリプトを実行せず、値を読むだけに使う。
+- **XSS 対策**: ファイル由来の文字列は `textContent` でだけ表示する。Trusted Types に対応していないブラウザでも、これで安全に表示できる。
+- **ZIP爆弾・巨大ファイル対策**: 入力ファイル・ZIP内のファイル数・展開後のXMLの大きさに上限があり（`converter.js` の `LIMITS`）、展開は上限に達した時点で打ち切る。XML以外のエントリは展開しない。
+  画面の説明に出す上限の数値も `LIMITS` から作る。
 - **XML**: DTD（`<!DOCTYPE>` / `<!ENTITY>`）を含むXMLは解析前に拒否する（実体展開による膨張・外部参照の対策）。
 - **壊れたZIP**: 範囲外を指すヘッダなどは利用者向けのエラーにし、例外の詳細を画面に出さない。
+- **保存するファイル名**: キャラクター名からパス区切り・制御文字・Windows の予約名を除き、同名は連番にする（`archive.js`）。
 - **コード検査**: GitHub の CodeQL（default setup）が JavaScript・Python・ワークフローを push と PR のたびに検査する。結果は Security タブに出る。
-- **CI**: アクションはコミットSHAで固定し、`GITHUB_TOKEN` は読み取り専用、`npm ci --ignore-scripts`。Dependabot（`.github/dependabot.yml`）が毎週月曜（日本時間4時）に更新を提案し、脆弱性の修正は見つかり次第 PR を作る。
+- **CI**: アクションはコミットSHAで固定し、`GITHUB_TOKEN` は読み取り専用、checkout は認証情報を残さない（`persist-credentials: false`）、`npm ci --ignore-scripts`。
 
-### 更新とE2Eの運用
+### 依存関係の更新（Dependabot）
 
-Dependabot は npm / GitHub Actions ごとに minor・patch の更新をまとめ、major は個別に提案します。
-通常更新は公開から7日待ちます。セキュリティ更新は別グループにまとめます（リポジトリ側で Dependabot security updates の有効化が必要です）。
-移転案内用の Streamlit はバージョン更新の対象外です。
+`.github/dependabot.yml` で、npm と GitHub Actions の定期更新を **月1回**（毎月1日、日本時間4時）提案する。
 
-CI は npm のダウンロードキャッシュを優先利用します。既存のチェック名を維持し、ブランチ保護への影響を避けています。
-Firefox / WebKit は Chromium 専用のアクセシビリティテストを収集しません。
-WebKit は1ワーカーでテストを直列に実行し、macOSで複数ウィンドウのクリック・ホバーが競合することを避けます。
-複数のPlaywrightコマンドは順番に実行してください（成果物フォルダやmacOSのブラウザ操作が競合します）。
-コピーのE2Eはブラウザ内で Clipboard API を差し替え、OSの共有クリップボードや権限設定による競合を防ぎます。
-実際のクリップボードへの貼り付けは、公開ページとダウンロード版で手動確認してください。
-安定性の反復確認: `npx playwright test --project=chromium --repeat-each=5`。
+- npm の依存はすべて開発用（テスト・Lint）で、公開ページには1つも入らない。急いで上げる理由は脆弱性の修正だけで、
+  それはリポジトリ設定の「Dependabot security updates」で見つかり次第すぐ PR が来る（定期更新の間隔とは無関係）。
+- **一緒に上げないと壊れるものは、メジャー版も含めて1つの PR にまとめる**:
+  `eslint`（eslint・@eslint/*・globals）、`playwright`（@playwright/*・@axe-core/*）。
+  それ以外はマイナー・パッチだけを1つにまとめ、メジャー版は個別の PR で確かめる。GitHub Actions はメジャー版も含めて1つの PR にまとめる。
+- 公開から7日（npm のメジャー版は14日）たった版だけを取り込む（乗っ取られたパッケージが公開・削除されるまでの期間を避ける）。
+- 移転案内用の Streamlit（`requirements.txt`）は定期更新の対象外。
 
-### 結果の確認・整理
+### 性能計測
 
-ファイルごとの進捗、成功・失敗・一部成功を表示し、読み込みを中断できます。変換済みの結果は残します。
-未解決参照は行番号からパレットの該当行を確認でき、ステータス・パラメータの同名も警告します。
-各結果の削除、全結果のクリア、表示中の全キャラクターのJSONをZIPで保存できます。
-ZIP生成は `archive.js` の無圧縮UTF-8 ZIPで、追加のランタイム依存関係はありません。
-
-配布ビルドはPython 3・bash・zipを使います。`scripts/build-manual.py` が `docs/manual.md` の見出し・リスト・表・リンクをHTMLにし、公開ページと配布ZIPの両方へ同梱します。
-これはこのマニュアル向けの変換器で、任意のMarkdown構文すべてを扱うものではありません。
-ローカルでマニュアルも確認する場合は `scripts/build-site.sh` で作った `_site/index.html` を開いてください。
-
-### 互換性と性能計測
-
-`tests/fixtures/expected/` に5種類の入力の期待JSONを保存し、既定・参照展開とメモありの2設定で比較します。
-特殊文字・空欄・一時的HP・未使用スロット・重複名・未解決参照も検査します。ZIPのCRCとUTF-8はPython標準のZIPリーダーで独立に検証します。
-期待JSONを変更する際は、入力と変換仕様を確認してから差分をレビューしてください。自動で上書きする更新コマンドは設けていません。
-
-`npm run benchmark` で実ブラウザの1・10・50体を、通常のXMLとパレットを256KiB増やしたXMLで計測できます。事前に `npx playwright install --only-shell chromium` を実行してください。
-結果は `.local-artifacts/benchmark/latest.json` に、環境・入力ハッシュ・各回の測定値・中央値を保存します。出力先は `npm run benchmark -- /tmp/benchmark.json` のように指定できます。
-XML解析・変換・DOM更新を分け、ファイル選択から2描画フレーム後までの総時間も記録します。総時間は自動操作や読み込み、イベント待機を含みます。
-詳細と初回の測定結果は `docs/performance.md` を参照してください。
-E2Eとベンチマークはブラウザ操作が競合しないよう順番に実行してください。速度は環境に依存するので、CIで固定の時間閾値による合否判定はしません。
+`npm run benchmark` で、実ブラウザに通常のXMLとパレットを256KiB増やしたXMLを1・10・50体読み込ませ、XML解析・変換・DOM更新・読み込み全体・総時間を測る。
+事前に `npx playwright install --only-shell chromium` を実行する。結果は `.local-artifacts/benchmark/latest.json` に保存する（`npm run benchmark -- /tmp/benchmark.json` で出力先を指定できる）。
+方法・結果・判断は [docs/performance.md](docs/performance.md) にある。速度は環境に依存するので、CI では固定の時間閾値による合否判定はしない。

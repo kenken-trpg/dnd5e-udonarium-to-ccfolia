@@ -5,8 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>5e ココフォリア変換</title>
 <meta name="description" content="D&D5e キャラクターデータベースのシートから、ココフォリア用のキャラクターJSONを作ります。">
-<!-- 外部への通信（connect-src）とインラインスクリプトを禁止する。読み込むのは同じ場所の app.js / converter.js / style.css だけ -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<!-- 外部への通信（connect-src）とインラインスクリプトを禁止する。読み込むのは同じ場所の app.js / converter.js / archive.js / style.css だけ。
+     Trusted Types（require-trusted-types-for）で innerHTML などへの文字列の代入も禁止し、ファイル由来の文字列がHTMLとして解釈される経路をなくす。
+     例外は XML の解析（DOMParser）に使う udon-xml ポリシーだけ（converter.js）。
+     対応ブラウザのみ有効。非対応のブラウザでも textContent だけで表示しているので安全。tests/csp.test.mjs で必須の指定を確かめている -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'; require-trusted-types-for 'script'; trusted-types udon-xml">
 <meta name="referrer" content="no-referrer">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%B2%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
@@ -31,7 +34,7 @@
   <section class="card" aria-labelledby="in-h">
     <h2 id="in-h" class="has-tip">2. 読み込む
       <button type="button" class="tip-btn" aria-label="読み込めるファイルについて">?</button>
-      <span class="tip" role="tooltip">生成ツールで保存したZIPか、その中のXMLを読み込めます。複数まとめて選べます。一度に50ファイル・50体、合計 <span data-limit="maxInputBytes">20MB</span> まで。XMLは1つ5MB、展開後も合計20MBまで。</span>
+      <span class="tip" role="tooltip">生成ツールで保存したZIPか、その中のXMLを読み込めます。複数まとめて選べます。一度に<span data-limit="maxBatchFiles">50</span>ファイル・<span data-limit="maxBatchFiles">50</span>体、合計<span data-limit="maxInputBytes">20MB</span>まで。XMLは1つ<span data-limit="maxXmlBytes">5MB</span>、展開後も合計<span data-limit="maxTotalXmlBytes">20MB</span>まで。新しく読み込むと、前の結果は置き換わります。</span>
     </h2>
     <div id="drop" class="drop" tabindex="0" role="button">
       保存した <strong>ZIP</strong>（または中の <strong>XML</strong>）をここにドロップ、またはクリックして選択
@@ -41,7 +44,10 @@
     <div id="loading" hidden>
       <label for="load-progress" id="load-label">読み込みの進捗</label>
       <progress id="load-progress" value="0" max="1"></progress>
-      <button type="button" id="cancel-load" class="secondary">読み込みをキャンセル</button>
+      <span class="has-tip">
+        <button type="button" id="cancel-load" class="secondary">読み込みをキャンセル</button>
+        <span class="tip" role="tooltip">読み込み中・未処理のファイルの結果は追加しません。変換済みの結果はそのまま使えます。</span>
+      </span>
     </div>
     <details id="file-report" hidden open>
       <summary>ファイルごとの処理結果</summary>
@@ -54,17 +60,17 @@
     <div class="opts opts-top">
       <span class="has-tip">
         <label><input type="checkbox" id="opt-notes"> 背景・人格的特徴などをメモに入れる</label>
-        <button type="button" class="tip-btn" aria-label="説明">?</button>
+        <button type="button" class="tip-btn" aria-label="メモに入れる項目の説明">?</button>
         <span class="tip" role="tooltip">背景・人格的特徴・尊ぶもの・関わり深いもの・弱味などを、【見出し】付きでメモの末尾に追加します。</span>
       </span>
       <span class="has-tip">
         <label><input type="checkbox" id="opt-expand"> パレットの {参照} を数値に置き換える</label>
-        <button type="button" class="tip-btn" aria-label="説明">?</button>
+        <button type="button" class="tip-btn" aria-label="参照の置き換えの説明">?</button>
         <span class="tip" role="tooltip">{筋力修正} などを、変換した時点の数値に置き換えます。置き換えると、あとでココフォリアのパラメータを書き換えてもパレットは変わらなくなります。</span>
       </span>
       <span class="has-tip">
         <label>コマの色 <input type="color" id="opt-color" value="#888888"></label>
-        <button type="button" class="tip-btn" aria-label="説明">?</button>
+        <button type="button" class="tip-btn" aria-label="コマの色の説明">?</button>
         <span class="tip" role="tooltip">ココフォリアのキャラクター設定の「色」に入ります。</span>
       </span>
     </div>
@@ -74,8 +80,14 @@
 
   <div id="result-tools" class="actions" hidden>
     <p id="result-count" role="status"></p>
-    <button type="button" id="save-all" class="primary">全員分をZIPで保存</button>
-    <button type="button" id="clear-all" class="secondary">すべてクリア</button>
+    <span class="has-tip">
+      <button type="button" id="save-all" class="primary">全員分をZIPで保存</button>
+      <span class="tip" role="tooltip">表示中の全員分のJSONを1つのZIPにまとめて保存します（バックアップ用）。ココフォリアへは、展開したJSONの中身を1体ずつコピーして貼り付けます。読み込み中は使えません。</span>
+    </span>
+    <span class="has-tip">
+      <button type="button" id="clear-all" class="secondary">すべてクリア</button>
+      <span class="tip" role="tooltip">読み込みを中断し、変換結果とファイルごとの処理結果を消します。出力オプションの記憶は消えません。</span>
+    </span>
   </div>
   <div id="results" role="region" aria-label="変換結果"></div>
 
@@ -112,7 +124,10 @@
         <button type="button" class="primary" data-a="copy">ココフォリア用にコピー</button>
         <span class="tip" role="tooltip">クリップボードにコピーします。ココフォリアのルームで盤面をクリックしてから Ctrl+V（Mac は ⌘+V）で貼り付けると、コマができます。</span>
       </span>
-      <button type="button" class="secondary" data-a="remove">この結果を削除</button>
+      <span class="has-tip">
+        <button type="button" class="secondary" data-a="remove">この結果を削除</button>
+        <span class="tip" role="tooltip">このキャラクターだけを結果から外します。読み込んだファイルには影響しません。</span>
+      </span>
       <span class="has-tip">
         <button type="button" class="secondary" data-a="save">JSONを保存</button>
         <span class="tip" role="tooltip">変換結果をJSONファイルとして保存します。バックアップや、あとで貼り付けたいとき用です。</span>

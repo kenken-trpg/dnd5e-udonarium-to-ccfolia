@@ -1,9 +1,11 @@
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { test, expect, openApp, fixturePath } from './fixtures.mjs';
+import { createRequire } from 'node:module';
+import { test, expect, openApp, fixturePath, upload } from './fixtures.mjs';
 
-const upload = (page, ...names) => page.locator('#file-input').setInputFiles(names.map(fixturePath));
 const cards = page => page.locator('#results article');
+// ZIP の中身はアプリと同じ converter.js の unzip で読む。標準の ZIP リーダーとの互換性（CRC・UTF-8の名前）は
+// tests/archive.test.mjs が Python で独立に確かめている。E2E を Python の無い環境（Playwright のコンテナ）でも回せるように
+const { unzip } = createRequire(import.meta.url)('../../converter.js');
 
 test.beforeEach(async ({ page }) => { await openApp(page); });
 
@@ -45,12 +47,8 @@ test('個別削除後に残った全員分を、同名を避けてZIPに保存�
   await page.locator('#save-all').click();
   const download = await pending;
   expect(download.suggestedFilename()).toBe('characters_ccfolia.zip');
-  const output = JSON.parse(execFileSync('python3', ['-c', `
-import json, sys, zipfile
-with zipfile.ZipFile(sys.argv[1]) as archive:
-    assert archive.testzip() is None
-    print(json.dumps({name: json.loads(archive.read(name)) for name in archive.namelist()}))
-`, await download.path()], { encoding: 'utf8' }));
+  const entries = await unzip(readFileSync(await download.path()));
+  const output = Object.fromEntries(entries.map(({ name, data }) => [name, JSON.parse(new TextDecoder().decode(data))]));
   expect(Object.keys(output)).toEqual(['テスト・ソーサラー_ccfolia.json', 'テスト・ソーサラー_2_ccfolia.json']);
   const expected = await cards(page).locator('[data-f="json"]').allTextContents();
   expect(Object.values(output)).toEqual(expected.map(text => JSON.parse(text)));
@@ -78,6 +76,7 @@ for (const action of ['cancel', 'replace', 'clear']) {
     await expect(page.locator('#load-progress')).toHaveAttribute('value', '1');
     await expect(page.locator('#save-all')).toBeDisabled();
     if (action === 'cancel') {
+      await expect(page.locator('#cancel-load')).toHaveAccessibleDescription(/変換済みの結果はそのまま/);
       await page.locator('#cancel-load').click();
       await expect(page.locator('#file-status li').nth(1)).toContainText('中断');
     } else if (action === 'clear') {
