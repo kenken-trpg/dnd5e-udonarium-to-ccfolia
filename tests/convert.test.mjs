@@ -183,3 +183,40 @@ test('深く入れ子になったdataも順序を保って変換できる', () =
   const parsed = C.parseUdonariumXml(xml, DOMParser);
   assert.deepEqual(C.toCcfolia(parsed).data.params, [{ label: '筋力', value: '10' }, { label: '敏捷力', value: '12' }]);
 });
+
+// ---------------------------------------------------------------- 最適化した処理が元の結果と同じこと
+
+test('extractXmlTexts は展開後のUTF-8のバイト数を返す（上限の確認で文字列を再エンコードしないため）', async () => {
+  for (const name of ['sorcerer.zip', 'attacks.xml', 'mixed.zip']) {
+    for (const x of await C.extractXmlTexts(fixture(name), name)) {
+      assert.equal(x.bytes, Buffer.byteLength(x.xml, 'utf8'), `${name}: ${x.name}`);
+    }
+  }
+});
+
+test('formatMB は上限の表示に使う「20MB」形式を返す', () => {
+  assert.equal(C.formatMB(C.LIMITS.maxInputBytes), '20MB');
+  assert.equal(C.formatMB(C.LIMITS.maxXmlBytes), '5MB');
+});
+
+test('inspectConversion の未解決参照は、行ごとに調べる素朴な方法と同じ結果になる', () => {
+  // 以前の実装（パレット全体で未解決のラベルを集めてから、行ごとにもう一度調べる）
+  const REF = /\{([^{}\n]+)\}/g;
+  const naive = d => {
+    const known = new Set([...d.status, ...d.params].map(x => x.label));
+    const missing = new Set([...d.commands.matchAll(REF)].map(m => m[1]).filter(label => !known.has(label)));
+    return d.commands.split('\n').flatMap((text, index) => {
+      const labels = [...new Set([...text.matchAll(REF)].map(m => m[1]).filter(label => missing.has(label)))];
+      return labels.length ? [{ line: index + 1, labels, text }] : [];
+    });
+  };
+  // 乱数は固定のシードで作る（失敗したときに再現できるように）
+  let seed = 12345;
+  const random = n => { seed = (seed * 1103515245 + 12345) % 2 ** 31; return seed % n; };
+  const pieces = ['{HP}', '{不明}', '{a}', '{', '}', '{{a}}', '{b', 'AR', ' ', '\n', '\n\n', '{constructor}', '{\n}'];
+  for (let i = 0; i < 500; i++) {
+    const commands = Array.from({ length: random(30) }, () => pieces[random(pieces.length)]).join('');
+    const d = { commands, status: [{ label: 'HP' }], params: [{ label: 'a' }] };
+    assert.deepEqual(C.inspectConversion({ data: d }).references, naive(d), JSON.stringify(commands));
+  }
+});

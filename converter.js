@@ -25,7 +25,9 @@
     maxZipEntries: 1000,             // ZIP内のファイル数
     maxXmlBytes: 5 * 1024 * 1024,    // 展開後のXML1つの大きさ（ZIP爆弾対策）
   });
-  const MB = n => `${Math.round(n / 1024 / 1024)}MB`;
+  /** バイト数を「20MB」のような表示にする（上限の案内・エラーメッセージを LIMITS と一致させるため） */
+  const formatMB = n => `${Math.round(n / 1024 / 1024)}MB`;
+  const MB = formatMB;
 
   // ---------------------------------------------------------------- ZIP
 
@@ -110,7 +112,7 @@
       if (!inBounds(start, compSize)) throw new Error(BROKEN_ZIP);
       const raw = u8.subarray(start, start + compSize);
       const remaining = LIMITS.maxTotalXmlBytes - totalBytes;
-      if (remaining <= 0) throw new Error('ZIP内のXMLの合計が大きすぎます（上限20MB）。');
+      if (remaining <= 0) throw new Error(`ZIP内のXMLの合計が大きすぎます（上限 ${MB(LIMITS.maxTotalXmlBytes)}）。`);
       const limit = Math.min(LIMITS.maxXmlBytes, remaining);
       let data;
       if (method === 0) {
@@ -129,18 +131,21 @@
 
   const isXmlName = name => /\.xml$/i.test(name);
 
-  /** ZIP / XML のバイト列から、キャラクターXMLのテキストを [{name, xml}] で取り出す */
+  /**
+   * ZIP / XML のバイト列から、キャラクターXMLのテキストを [{name, xml, bytes}] で取り出す。
+   * bytes は展開後のUTF-8のバイト数（呼び出し側が合計の上限を確かめるのに使う。文字列を再エンコードしなくて済む）
+   */
   async function extractXmlTexts(buffer, fileName = '') {
     const u8 = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     checkInputSize(u8);
     const utf8 = new TextDecoder('utf-8');
     if (!isZip(u8)) {
       if (u8.length > LIMITS.maxXmlBytes) throw new Error(`XMLが大きすぎます（上限 ${MB(LIMITS.maxXmlBytes)}）。`);
-      return [{ name: fileName, xml: utf8.decode(u8) }];
+      return [{ name: fileName, xml: utf8.decode(u8), bytes: u8.length }];
     }
     // 画像などは展開しない
     const xmls = (await unzip(u8, { filter: isXmlName }))
-      .map(f => ({ name: f.name, xml: utf8.decode(f.data) }))
+      .map(f => ({ name: f.name, xml: utf8.decode(f.data), bytes: f.data.length }))
       .filter(f => CHARACTER_TAG.test(f.xml));
     if (!xmls.length) throw new Error('ZIP内にユドナリウムのキャラクターXMLが見つかりませんでした。');
     return xmls;
@@ -151,6 +156,20 @@
   const CHARACTER_TAG = /<character[\s>]/;
   // ユドナリウムはDTDを出力しない。実体展開による膨張（billion laughs）や外部参照を避けるため拒否する
   const DTD = /<!DOCTYPE|<!ENTITY/i;
+
+  /**
+   * index.html の CSP は Trusted Types で、HTML として解釈されうる文字列の代入を禁止している。
+   * DOMParser.parseFromString もその対象なので、XMLの解析にだけ使うポリシー（CSP の trusted-types に書いた名前）を通す。
+   * DOMParser で作った文書はスクリプトを実行せず、画面にも入れない（値を読むだけ）ので、文字列はそのまま渡してよい。
+   */
+  let xmlPolicy = null;
+  function trustedXml(text) {
+    const tt = globalThis.trustedTypes;
+    if (!tt?.createPolicy) return text;
+    xmlPolicy ||= tt.createPolicy(XML_POLICY, { createHTML: s => s });
+    return xmlPolicy.createHTML(text);
+  }
+  const XML_POLICY = 'udon-xml';
 
   function dataChildren(el) {
     const out = [];
@@ -164,10 +183,10 @@
     return el ? dataChildren(el).find(c => c.getAttribute('name') === name) || null : null;
   }
 
-  /** 中身が全角スペース等の空白だけなら空文字にする */
+  /** 中身が全角スペース等の空白だけなら空文字にする（JS の \s は全角スペース U+3000 も含む） */
   function cleanText(s) {
     const t = String(s == null ? '' : s).replace(/\r\n?/g, '\n');
-    return /^[\s　]*$/.test(t) ? '' : t.replace(/^\n+|[\s　]+$/g, '');
+    return /^\s*$/.test(t) ? '' : t.replace(/^\n+|\s+$/g, '');
   }
 
   /**
@@ -180,7 +199,8 @@
     const Parser = DOMParserImpl || (typeof DOMParser !== 'undefined' ? DOMParser : null);
     if (!Parser) throw new Error('DOMParser が利用できません。');
     if (DTD.test(xmlText)) throw new Error('DTD（<!DOCTYPE>）を含むXMLには対応していません。');
-    const doc = new Parser().parseFromString(xmlText, 'application/xml');
+    const source = Parser === globalThis.DOMParser ? trustedXml(xmlText) : xmlText;
+    const doc = new Parser().parseFromString(source, 'application/xml');
     if (doc.getElementsByTagName('parsererror').length) throw new Error('XMLの解析に失敗しました。');
 
     const charEl = doc.getElementsByTagName('character')[0];
@@ -336,10 +356,12 @@
     };
   }
 
+  const knownLabels = d => new Set([...d.status, ...d.params].map(x => x.label));
+
   /** パレット中の {参照} のうち、ステータス・パラメータに存在しないもの */
   function unresolvedReferences(ccfolia) {
     const d = ccfolia.data;
-    const known = new Set([...d.status, ...d.params].map(x => x.label));
+    const known = knownLabels(d);
     const missing = new Set();
     for (const m of d.commands.matchAll(REF)) if (!known.has(m[1])) missing.add(m[1]);
     return [...missing];
@@ -348,12 +370,22 @@
   /** 元の値を変更せず、貼り付け前に確認する項目を返す。行番号は1始まり。 */
   function inspectConversion(ccfolia) {
     const d = ccfolia.data;
-    const missing = new Set(unresolvedReferences(ccfolia));
+    const known = knownLabels(d);
     const references = [];
-    d.commands.split('\n').forEach((line, index) => {
-      const labels = [...new Set([...line.matchAll(REF)].map(m => m[1]).filter(label => missing.has(label)))];
-      if (labels.length) references.push({ line: index + 1, labels, text: line });
-    });
+    // パレット全体を1回だけ走査し、未解決の参照がある行だけを集める
+    let line = 1;
+    let lineStart = 0;
+    let current = null;
+    for (const m of d.commands.matchAll(/\n|\{([^{}\n]+)\}/g)) {
+      if (m[0] === '\n') { line++; lineStart = m.index + 1; current = null; continue; }
+      if (known.has(m[1])) continue;
+      if (!current) {
+        const end = d.commands.indexOf('\n', lineStart);
+        current = { line, labels: [], text: d.commands.slice(lineStart, end < 0 ? undefined : end) };
+        references.push(current);
+      }
+      if (!current.labels.includes(m[1])) current.labels.push(m[1]);
+    }
     const counts = new Map();
     for (const field of [...d.status, ...d.params]) counts.set(field.label, (counts.get(field.label) || 0) + 1);
     return { references, duplicates: [...counts].filter(([, count]) => count > 1).map(([label, count]) => ({ label, count })) };
@@ -362,6 +394,7 @@
   return {
     DEFAULT_OPTIONS,
     LIMITS,
+    formatMB,
     unzip,
     extractXmlTexts,
     parseUdonariumXml,

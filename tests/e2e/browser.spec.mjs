@@ -2,11 +2,10 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { test, expect, openApp, fixturePath, XML_PARSE_ERROR_NOISE } from './fixtures.mjs';
+import { test, expect, openApp, fixturePath, upload, XML_PARSE_ERROR_NOISE } from './fixtures.mjs';
 
 const cards = page => page.locator('#results article');
 const card = (page, name) => cards(page).filter({ has: page.getByRole('heading', { name }) });
-const upload = (page, ...names) => page.locator('#file-input').setInputFiles(names.map(fixturePath));
 const jsonOf = async c => JSON.parse(await c.locator('[data-f="json"]').textContent());
 
 test.beforeEach(async ({ page }) => {
@@ -57,6 +56,7 @@ test('続けて読み込むと前の結果は置き換わる', async ({ page }) 
 
 test('出力オプションで結果が変わる', async ({ page }) => {
   await upload(page, 'multiclass.xml', 'attacks.xml');
+  await expect(cards(page)).toHaveCount(2);
   const multi = cards(page).nth(0);
   const attacks = cards(page).nth(1);
   await expect(multi.locator('[data-f="memo"]')).not.toContainText('【背景】');
@@ -69,7 +69,7 @@ test('出力オプションで結果が変わる', async ({ page }) => {
   await expect(attacks.locator('[data-f="palette"]')).not.toContainText('{');
   await expect(attacks.locator('[data-f="palette"]')).toContainText('AR+3 【敏捷力】能力値判定');
 
-  await page.getByLabel('コマの色').fill('#336699');
+  await page.getByLabel('コマの色', { exact: true }).fill('#336699');
   await expect(attacks.locator('[data-f="json"]')).toContainText('"color": "#336699"');
 });
 
@@ -143,17 +143,67 @@ test.describe('ツールチップヘルプ', () => {
     await expect(box).toHaveAccessibleDescription(/【見出し】付きでメモの末尾に追加/);
   });
 
-  test('読み込み上限が converter.js の値と一致している', async ({ page }) => {
-    const mb = await page.evaluate(() => Math.round(window.UdonCcfolia.LIMITS.maxInputBytes / 1024 / 1024));
-    await expect(page.locator('[data-limit="maxInputBytes"]')).toHaveText(`${mb}MB`);
+  test('説明文の読み込み上限が converter.js の値と一致している', async ({ page }) => {
+    const limits = await page.evaluate(() => window.UdonCcfolia.LIMITS);
+    const shown = page.locator('[data-limit]');
+    await expect(shown).toHaveCount(5);
+    for (const el of await shown.all()) {
+      const key = await el.getAttribute('data-limit');
+      await expect(el).toHaveText(key.endsWith('Bytes') ? `${Math.round(limits[key] / 1024 / 1024)}MB` : String(limits[key]));
+    }
   });
 
-  test('結果カードのボタンにも説明がある', async ({ page }) => {
+  test('説明の上にマウスを動かしても消えない', async ({ page }) => {
+    const wrap = page.locator('.has-tip').filter({ has: page.locator('#opt-expand') });
+    const tip = wrap.getByRole('tooltip');
+    await wrap.getByRole('button', { name: '説明' }).hover();
+    await expect(tip).toBeVisible();
+    const box = await tip.boundingBox();
+    // ボタンから説明の中央へ、隙間を通ってゆっくり動かす
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 10 });
+    await expect(tip).toBeVisible();
+    await page.mouse.move(1, 1);
+    await expect(tip).toBeHidden();
+  });
+
+  test('フォーカスだけで出ている説明は、下にあるもののクリックを横取りしない', async ({ page }) => {
+    await page.locator('#opt-notes').focus();
+    const tip = page.locator('.has-tip').filter({ has: page.locator('#opt-notes') }).getByRole('tooltip');
+    await expect(tip).toBeVisible();
+    expect(await tip.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      return !!document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('.tip');
+    })).toBe(false);
+  });
+
+  test('画面の下端では説明を上に出す', async ({ page }) => {
+    await page.setViewportSize({ width: 800, height: 400 });
+    const wrap = page.locator('.has-tip').filter({ has: page.locator('#opt-expand') });
+    // ? ボタンが画面の下端すれすれに来るようにスクロールする
+    await wrap.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().bottom - window.innerHeight + 2));
+    await wrap.getByRole('button', { name: '説明' }).hover();
+    const tip = wrap.getByRole('tooltip');
+    await expect(tip).toBeVisible();
+    await expect(wrap).toHaveClass(/tip-above/);
+    const [tipBox, wrapBox] = [await tip.boundingBox(), await wrap.boundingBox()];
+    expect(tipBox.y + tipBox.height).toBeLessThanOrEqual(wrapBox.y);
+    expect(tipBox.y).toBeGreaterThanOrEqual(0);
+  });
+
+  test('結果カードと結果の操作ボタンにも説明がある', async ({ page }) => {
     await upload(page, 'sorcerer.zip');
-    await expect(cards(page).first().getByRole('button', { name: 'ココフォリア用にコピー' }))
-      .toHaveAccessibleDescription(/Ctrl\+V/);
-    await expect(cards(page).first().getByRole('button', { name: 'JSONを保存' }))
-      .toHaveAccessibleDescription(/バックアップ/);
+    const result = cards(page).first();
+    await expect(result.getByRole('button', { name: 'ココフォリア用にコピー' })).toHaveAccessibleDescription(/Ctrl\+V/);
+    await expect(result.getByRole('button', { name: 'JSONを保存' })).toHaveAccessibleDescription(/バックアップ/);
+    await expect(result.getByRole('button', { name: 'この結果を削除' })).toHaveAccessibleDescription(/このキャラクターだけ/);
+    await expect(page.getByRole('button', { name: '全員分をZIPで保存' })).toHaveAccessibleDescription(/1体ずつ/);
+    await expect(page.getByRole('button', { name: 'すべてクリア' })).toHaveAccessibleDescription(/出力オプションの記憶は消えません/);
+  });
+
+  test('? ボタンはそれぞれ何の説明か分かる名前を持つ', async ({ page }) => {
+    const names = await page.locator('.tip-btn').evaluateAll(buttons => buttons.map(b => b.getAttribute('aria-label')));
+    expect(names.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(names).size, '同じ名前の ? ボタンが無い').toBe(names.length);
   });
 
   test('スマホ幅でも画面からはみ出さない', async ({ page }) => {
@@ -164,6 +214,8 @@ test.describe('ツールチップヘルプ', () => {
     const wraps = await page.locator('.has-tip:has(> .tip-btn)').all();
     expect(wraps.length).toBeGreaterThanOrEqual(4);
     for (const wrap of wraps) {
+      // 前の説明が次の ? ボタンに重なっていると、マウスが説明の上に乗ったままになるので一度外す
+      await page.mouse.move(1, 1);
       await wrap.locator('> .tip-btn').hover();
       const tip = wrap.locator('> .tip');
       await expect(tip).toBeVisible();
@@ -185,12 +237,12 @@ test('ローカルファイルとして開いても動く', async ({ page }) => 
 test.describe('出力オプションの記憶', () => {
   test('選んだオプションは再読み込みしても残る', async ({ page }) => {
     await page.getByLabel('背景・人格的特徴などをメモに入れる').check();
-    await page.getByLabel('コマの色').fill('#336699');
+    await page.getByLabel('コマの色', { exact: true }).fill('#336699');
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-ready', 'true');
     await expect(page.getByLabel('背景・人格的特徴などをメモに入れる')).toBeChecked();
     await expect(page.getByLabel('パレットの {参照} を数値に置き換える')).not.toBeChecked();
-    await expect(page.getByLabel('コマの色')).toHaveValue('#336699');
+    await expect(page.getByLabel('コマの色', { exact: true })).toHaveValue('#336699');
     await upload(page, 'multiclass.xml');
     await expect(cards(page).first().locator('[data-f="memo"]')).toContainText('【背景】');
   });
@@ -205,7 +257,7 @@ test.describe('出力オプションの記憶', () => {
       await expect(page.locator('html')).toHaveAttribute('data-ready', 'true');
       await expect(page.getByLabel('背景・人格的特徴などをメモに入れる')).not.toBeChecked();
       await expect(page.getByLabel('パレットの {参照} を数値に置き換える')).not.toBeChecked();
-      await expect(page.getByLabel('コマの色')).toHaveValue('#888888');
+      await expect(page.getByLabel('コマの色', { exact: true })).toHaveValue('#888888');
     });
   }
 });
@@ -230,6 +282,8 @@ test('配布用ZIPを展開してそのまま使える', async ({ page, browserN
   await expect(card(page, 'テスト・ソーサラー')).toHaveCount(1);
   await page.goto(pathToFileURL(`${dir}/manual.html`).href);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('D&D5e ココフォリア変換 マニュアル');
+  // 目次は本文の h2 見出しと1対1で対応する
+  await expect(page.getByRole('navigation', { name: '目次' }).getByRole('link')).toHaveCount(await page.locator('main > h2').count());
   expect(await page.locator('a[href^="#"]').evaluateAll(links => links
     .map(link => link.getAttribute('href').slice(1)).filter(id => !document.getElementById(decodeURIComponent(id))))).toEqual([]);
   await page.getByRole('link', { name: '変換ツールに戻る' }).first().click();
@@ -275,4 +329,19 @@ test('タッチ操作で説明を開き、Esc後に再表示できる', async ({
   } finally {
     await context.close();
   }
+});
+
+test.describe('Trusted Types', () => {
+  // 禁止した代入はブラウザがコンソールに報告する（このテストではわざと起こす）
+  test.use({ allowedConsole: /TrustedHTML|injection sink/ });
+
+  test('innerHTML などへの文字列の代入を禁止している（対応ブラウザのみ）', async ({ page }) => {
+    const result = await page.evaluate(() => {
+      if (!('trustedTypes' in window)) return 'unsupported';
+      try { document.body.insertAdjacentHTML('beforeend', '<img src=x>'); return 'allowed'; } catch (e) { return e.name; }
+    });
+    test.skip(result === 'unsupported', 'このブラウザは Trusted Types に対応していない');
+    expect(result).toBe('TypeError');
+    await expect(page.locator('body > img')).toHaveCount(0);
+  });
 });

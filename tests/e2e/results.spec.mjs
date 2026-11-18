@@ -1,8 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { test, expect, openApp, fixturePath } from './fixtures.mjs';
+import { test, expect, openApp, fixturePath, upload } from './fixtures.mjs';
 
-const upload = (page, ...names) => page.locator('#file-input').setInputFiles(names.map(fixturePath));
 const cards = page => page.locator('#results article');
 
 test.beforeEach(async ({ page }) => { await openApp(page); });
@@ -78,6 +77,7 @@ for (const action of ['cancel', 'replace', 'clear']) {
     await expect(page.locator('#load-progress')).toHaveAttribute('value', '1');
     await expect(page.locator('#save-all')).toBeDisabled();
     if (action === 'cancel') {
+      await expect(page.locator('#cancel-load')).toHaveAccessibleDescription(/変換済みの結果はそのまま/);
       await page.locator('#cancel-load').click();
       await expect(page.locator('#file-status li').nth(1)).toContainText('中断');
     } else if (action === 'clear') {

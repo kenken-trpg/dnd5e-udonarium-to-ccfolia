@@ -14,7 +14,8 @@
   // 読み込み中に次のファイルが来たら、古い読み込みの結果は捨てる
   let loadGeneration = 0;
   let fileRows = [];
-  const metrics = ['parse', 'convert', 'display'];
+  // 性能計測（scripts/benchmark.mjs が読む）。load はファイル選択から全ファイルの処理が終わるまで
+  const metrics = ['parse', 'convert', 'display', 'load'];
   function clearMetrics() { metrics.forEach(name => performance.clearMeasures(`udon:${name}`)); }
   function timed(name, action) {
     const start = performance.now();
@@ -37,12 +38,16 @@
       if (!tip || tip.id) continue;
       tip.id = `tip-${++tipSeq}`;
       for (const el of wrap.querySelectorAll('button, input, [tabindex]')) el.setAttribute('aria-describedby', tip.id);
-      // 画面の右端からはみ出さないよう、表示のたびに位置を調整する
+      // 画面からはみ出さないよう、表示のたびに位置を調整する。
+      // 右端を越えるなら左へずらし、下に収まらず上なら収まるときは上に出す
       const place = () => {
-        wrap.classList.remove('tip-off');
+        wrap.classList.remove('tip-off', 'tip-above');
         tip.style.left = '';
-        const over = tip.getBoundingClientRect().right - (document.documentElement.clientWidth - 8);
+        const box = tip.getBoundingClientRect();
+        const over = box.right - (document.documentElement.clientWidth - 8);
         if (over > 0) tip.style.left = `${-over}px`;
+        const above = wrap.getBoundingClientRect().top - box.height - 6;
+        if (box.bottom > document.documentElement.clientHeight - 8 && above >= 8) wrap.classList.add('tip-above');
       };
       wrap.addEventListener('mouseenter', place);
       wrap.addEventListener('focusin', place);
@@ -58,9 +63,9 @@
     for (const wrap of document.querySelectorAll('.has-tip:hover, .has-tip:focus-within')) wrap.classList.add('tip-off');
   });
 
-  for (const el of document.querySelectorAll('[data-limit]')) {
-    el.textContent = `${Math.round(C.LIMITS[el.dataset.limit] / 1024 / 1024)}MB`;
-  }
+  // 説明文中の上限を converter.js の値で書き換える（文言と実際の上限がずれないように）
+  const formatLimit = key => (key.endsWith('Bytes') ? C.formatMB(C.LIMITS[key]) : String(C.LIMITS[key]));
+  for (const el of document.querySelectorAll('[data-limit]')) el.textContent = formatLimit(el.dataset.limit);
   wireTips(document);
 
   // 手元のファイルとして開いているときは、ZIPのダウンロード案内を出さない（ZIPは公開ページにしか無い）
@@ -93,12 +98,15 @@
   function renderAll() {
     if (renderQueued) return;
     renderQueued = true;
-    requestAnimationFrame(() => {
-      renderQueued = false;
-      const options = outputOptions();
-      clearMetrics();
-      entries.forEach(entry => render(entry, options));
-    });
+    requestAnimationFrame(flushRender);
+  }
+  /** 描き直し待ちがあれば今すぐ描き直す。コピー・保存の直前に呼び、常に今のオプションの結果を使う */
+  function flushRender() {
+    if (!renderQueued) return;
+    renderQueued = false;
+    const options = outputOptions();
+    clearMetrics();
+    entries.forEach(entry => render(entry, options));
   }
   for (const id of ['opt-notes', 'opt-expand', 'opt-color']) {
     $(id).addEventListener('input', () => { saveOptions(); renderAll(); });
@@ -127,39 +135,7 @@
       `パラメータ ${d.params.length}件`,
     ].filter(Boolean).map(chip));
 
-    const checks = C.inspectConversion(out);
-    const warn = f('warn');
-    warn.replaceChildren();
-    warn.classList.toggle('hidden', !checks.references.length && !checks.duplicates.length);
-    if (checks.references.length) {
-      warn.append(Object.assign(document.createElement('p'), { textContent: 'パレット中の参照がパラメータに見つかりません。該当行を確認し、ココフォリアでパレットかパラメータを修正してください。' }));
-      const list = document.createElement('ul');
-      for (const ref of checks.references.slice(0, 20)) {
-        const item = document.createElement('li');
-        const button = Object.assign(document.createElement('button'), {
-          type: 'button', className: 'reference-link', textContent: `${ref.line}行目: ${ref.labels.map(label => `{${label}}`).join(' ')}`,
-        });
-        button.addEventListener('click', () => {
-          const palette = f('palette');
-          palette.closest('details').open = true;
-          const lines = entry.out.data.commands.split('\n');
-          const mark = Object.assign(document.createElement('mark'), { textContent: lines[ref.line - 1], tabIndex: -1 });
-          const before = lines.slice(0, ref.line - 1).join('\n');
-          const after = lines.slice(ref.line).join('\n');
-          palette.replaceChildren(document.createTextNode(before + (ref.line > 1 ? '\n' : '')), mark,
-            document.createTextNode((ref.line < lines.length ? '\n' : '') + after));
-          mark.focus();
-          mark.scrollIntoView({ block: 'nearest' });
-        });
-        item.append(button);
-        list.append(item);
-      }
-      warn.append(list);
-      if (checks.references.length > 20) warn.append(`ほか${checks.references.length - 20}行。JSONとパレットでも確認できます。`);
-    }
-    for (const duplicate of checks.duplicates) warn.append(Object.assign(document.createElement('p'), {
-      textContent: `「${duplicate.label || '名称未設定'}」が${duplicate.count}件あります。参照する値が曖昧になるため、貼り付け前に元データの名前と値を確認してください。`,
-    }));
+    renderWarnings(entry, C.inspectConversion(out));
     const hasNotes = entry.parsed.sections.some(section => section.items.some(item => item.kind === 'note' && item.value));
     f('notice').textContent = '立ち絵は引き継がれません。貼り付け後に設定してください。' +
       (hasNotes && !options.includeNotes ? ' 背景などのメモは出力していません。必要なら出力オプションをオンにしてください。' : '');
@@ -170,13 +146,56 @@
     performance.measure('udon:display', { start: displayStart, end: performance.now() });
   }
 
+  const MAX_REFERENCE_LINKS = 20;
+  const paragraph = text => Object.assign(document.createElement('p'), { textContent: text });
+
+  /** 未解決の {参照} と同名の項目の警告。参照は行番号のボタンにし、押すとパレットの該当行を強調する */
+  function renderWarnings(entry, checks) {
+    const warn = entry.fields.get('warn');
+    warn.replaceChildren();
+    warn.classList.toggle('hidden', !checks.references.length && !checks.duplicates.length);
+    if (checks.references.length) {
+      warn.append(paragraph('パレット中の参照がパラメータに見つかりません。該当行を確認し、ココフォリアでパレットかパラメータを修正してください。'));
+      const list = document.createElement('ul');
+      for (const ref of checks.references.slice(0, MAX_REFERENCE_LINKS)) {
+        const button = Object.assign(document.createElement('button'), {
+          type: 'button', className: 'reference-link', textContent: `${ref.line}行目: ${ref.labels.map(label => `{${label}}`).join(' ')}`,
+        });
+        button.addEventListener('click', () => highlightPaletteLine(entry, ref.line));
+        const item = document.createElement('li');
+        item.append(button);
+        list.append(item);
+      }
+      warn.append(list);
+      const rest = checks.references.length - MAX_REFERENCE_LINKS;
+      if (rest > 0) warn.append(`ほか${rest}行。JSONとパレットでも確認できます。`);
+    }
+    for (const duplicate of checks.duplicates) {
+      warn.append(paragraph(`「${duplicate.label || '名称未設定'}」が${duplicate.count}件あります。参照する値が曖昧になるため、貼り付け前に元データの名前と値を確認してください。`));
+    }
+  }
+
+  /** パレットの欄を開き、line 行目（1始まり）を <mark> で囲んでフォーカスする */
+  function highlightPaletteLine(entry, line) {
+    const palette = entry.fields.get('palette');
+    palette.closest('details').open = true;
+    const lines = entry.out.data.commands.split('\n');
+    const mark = Object.assign(document.createElement('mark'), { textContent: lines[line - 1], tabIndex: -1 });
+    const before = lines.slice(0, line - 1).join('\n');
+    const after = lines.slice(line).join('\n');
+    palette.replaceChildren(document.createTextNode(before + (line > 1 ? '\n' : '')), mark,
+      document.createTextNode((line < lines.length ? '\n' : '') + after));
+    mark.focus();
+    mark.scrollIntoView({ block: 'nearest' });
+  }
+
   function addEntry(parsed) {
     const el = $('result-tpl').content.firstElementChild.cloneNode(true);
     const fields = new Map([...el.querySelectorAll('[data-f]')].map(node => [node.dataset.f, node]));
     const entry = { parsed, el, fields };
     el.querySelector('[data-a="remove"]').addEventListener('click', () => {
       const index = entries.indexOf(entry);
-      clearTimeout(el.querySelector('[data-a="copy"]').resetTimer);
+      clearTimeout(entry.copyTimer);
       entries = entries.filter(item => item !== entry);
       el.remove();
       updateTools();
@@ -185,8 +204,8 @@
     });
     el.querySelector('[data-a="copy"]').addEventListener('click', e => copy(entry, e.currentTarget));
     el.querySelector('[data-a="save"]').addEventListener('click', () => {
-      render(entry);
-      download(new Blob([entry.json], { type: 'application/json' }), safeName(parsed.name) + '_ccfolia.json');
+      flushRender();
+      download(new Blob([entry.json], { type: 'application/json' }), A.safeName(parsed.name) + '_ccfolia.json');
     });
     entries.push(entry);
     results.append(el);
@@ -197,7 +216,7 @@
   }
 
   function clearEntries() {
-    for (const entry of entries) clearTimeout(entry.el.querySelector('[data-a="copy"]').resetTimer);
+    for (const entry of entries) clearTimeout(entry.copyTimer);
     entries = []; results.replaceChildren(); updateTools();
   }
 
@@ -212,7 +231,7 @@
   }
 
   async function copy(entry, btn) {
-    render(entry);
+    flushRender();
     const text = JSON.stringify(entry.out);
     let ok = true;
     try {
@@ -223,8 +242,8 @@
     if (!ok) { setMsg('クリップボードにコピーできませんでした。「JSON」欄の内容を手動でコピーしてください。', 'err'); return; }
     btn.textContent = 'コピーしました ✓';
     setMsg(`「${entry.out.data.name}」をコピーしました。ココフォリアの盤面で貼り付けてください。`, 'ok');
-    clearTimeout(btn.resetTimer);
-    btn.resetTimer = setTimeout(() => { btn.textContent = 'ココフォリア用にコピー'; }, 1800);
+    clearTimeout(entry.copyTimer);
+    entry.copyTimer = setTimeout(() => { btn.textContent = 'ココフォリア用にコピー'; }, 1800);
   }
 
   function download(blob, name) {
@@ -235,10 +254,12 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
   }
 
-  const safeName = A.safeName;
-
   // ---- 読み込み状態。世代番号で、キャンセル・選び直し後の古い処理を画面へ戻さない。
-  const yieldToUI = () => new Promise(resolve => setTimeout(resolve, 0));
+  // 1件ごとに画面の更新とキャンセル操作に処理を譲る。scheduler.yield() があれば、
+  // 譲ったあとすぐに続きを実行できる（setTimeout は他のタイマーの後回しになる）
+  const yieldToUI = globalThis.scheduler?.yield
+    ? () => globalThis.scheduler.yield()
+    : () => new Promise(resolve => setTimeout(resolve, 0));
   function finishLoading() { $('loading').hidden = true; updateTools(); }
   function cancelLoad() {
     ++loadGeneration;
@@ -260,22 +281,46 @@
   });
   $('save-all').addEventListener('click', () => {
     // 描画待ちのフレームがあっても、現在のオプションで保存する。
-    try {
-      const options = outputOptions();
-      const characters = entries.map(entry => C.toCcfolia(entry.parsed, options));
-      download(A.createJsonZip(characters), 'characters_ccfolia.zip');
-    }
+    flushRender();
+    try { download(A.createJsonZip(entries.map(entry => entry.out)), 'characters_ccfolia.zip'); }
     catch (err) { setMsg(err.message, 'err'); }
   });
+
+  const tooManyFiles = () => `一度に読み込めるのは ${C.LIMITS.maxBatchFiles}ファイル、合計${C.formatMB(C.LIMITS.maxInputBytes)}までです。分けて読み込んでください。`;
+  const tooManyCharacters = () => `変換対象が多すぎます（XML合計${C.formatMB(C.LIMITS.maxTotalXmlBytes)}、${C.LIMITS.maxBatchFiles}体まで）。分けて読み込んでください。`;
+
+  /**
+   * 1ファイル分を読み、キャラクターを結果に追加する。budget は今回の読み込み全体の残り（XMLのバイト数・体数）。
+   * @returns {Promise<{count:number, errors:string[]} | null>} 途中でキャンセル・選び直しされたら null
+   */
+  async function loadFile(file, gen, budget) {
+    let count = 0;
+    const errors = [];
+    try {
+      const xmls = await C.extractXmlTexts(await file.arrayBuffer(), file.name);
+      if (gen !== loadGeneration) return null;
+      budget.bytes -= xmls.reduce((sum, x) => sum + x.bytes, 0);
+      budget.characters -= xmls.length;
+      if (budget.bytes < 0 || budget.characters < 0) throw new Error(tooManyCharacters());
+      for (const xml of xmls) {
+        await yieldToUI();
+        if (gen !== loadGeneration) return null;
+        try { addEntry(timed('parse', () => C.parseUdonariumXml(xml.xml))); count++; }
+        catch (err) { errors.push(`${xml.name}: ${err.message}`); }
+      }
+    } catch (err) { errors.push(err.message); }
+    return gen === loadGeneration ? { count, errors } : null;
+  }
 
   async function handleFiles(fileList) {
     const files = [...fileList];
     if (!files.length) return;
     cancelLoad();
     if (files.length > C.LIMITS.maxBatchFiles || files.reduce((sum, file) => sum + file.size, 0) > C.LIMITS.maxInputBytes) {
-      setMsg(`一度に読み込めるのは ${C.LIMITS.maxBatchFiles}ファイル、合計20MBまでです。分けて読み込んでください。`, 'err');
+      setMsg(tooManyFiles(), 'err');
       return;
     }
+    const start = performance.now();
     const gen = ++loadGeneration;
     clearEntries(); clearMetrics();
     $('file-status').replaceChildren();
@@ -289,34 +334,17 @@
     });
     updateTools();
     const errors = [];
-    let totalXmlBytes = 0;
-    let totalCharacters = 0;
+    const budget = { bytes: C.LIMITS.maxTotalXmlBytes, characters: C.LIMITS.maxBatchFiles };
     for (const [index, file] of files.entries()) {
-      if (gen !== loadGeneration) return;
       const row = fileRows[index];
       row.state = 'processing'; row.el.textContent = `${file.name}: 読み込み中`;
       $('load-label').textContent = `${index + 1} / ${files.length}ファイルを読み込み中`;
       setMsg(`読み込み中…（${index + 1} / ${files.length}）`);
       await yieldToUI();
       if (gen !== loadGeneration) return;
-      let count = 0;
-      const fileErrors = [];
-      try {
-        const xmls = await C.extractXmlTexts(await file.arrayBuffer(), file.name);
-        if (gen !== loadGeneration) return;
-        totalXmlBytes += xmls.reduce((sum, x) => sum + new TextEncoder().encode(x.xml).length, 0);
-        totalCharacters += xmls.length;
-        if (totalXmlBytes > C.LIMITS.maxTotalXmlBytes || totalCharacters > C.LIMITS.maxBatchFiles) {
-          throw new Error('変換対象が多すぎます（XML合計20MB、50体まで）。分けて読み込んでください。');
-        }
-        for (const xml of xmls) {
-          await yieldToUI();
-          if (gen !== loadGeneration) return;
-          try { addEntry(timed('parse', () => C.parseUdonariumXml(xml.xml))); count++; }
-          catch (err) { fileErrors.push(`${xml.name}: ${err.message}`); }
-        }
-      } catch (err) { fileErrors.push(err.message); }
-      if (gen !== loadGeneration) return;
+      const result = await loadFile(file, gen, budget);
+      if (!result) return;
+      const { count, errors: fileErrors } = result;
       row.state = fileErrors.length ? (count ? 'partial' : 'error') : 'success';
       row.el.textContent = `${file.name}: ${fileErrors.length ? (count ? '一部成功' : '失敗') : '成功'}（${count}体）` +
         (fileErrors.length ? ` — ${fileErrors.join(' / ')}` : '');
@@ -324,6 +352,7 @@
       $('load-progress').value = index + 1;
     }
     finishLoading();
+    performance.measure('udon:load', { start, end: performance.now() });
     setMsg([entries.length ? `変換しました（${entries.length}体）。` : '', ...errors].filter(Boolean).join('\n'), errors.length ? 'err' : 'ok');
   }
 

@@ -68,3 +68,14 @@ export async function openApp(page, url = `${ORIGIN}/`) {
 }
 
 export const fixturePath = name => FIXTURES + name;
+
+/**
+ * fixtures/ のファイルを選び、読み込みが終わるまで待つ。
+ * 読み込み中の画面を操作すると、結果の追加と操作が競合してテストが不安定になる（WebKit で再現した）。
+ * 読み込み中の状態を確かめるテストは、この関数を使わずに setInputFiles を直接呼ぶ。
+ */
+export async function upload(page, ...names) {
+  await page.locator('#file-input').setInputFiles(names.map(fixturePath));
+  // 進捗表示は change イベントの中で同期的に出るので、setInputFiles のあとに「消えた」ことを待てば完了が分かる
+  await expect(page.locator('#loading')).toBeHidden();
+}

@@ -1,24 +1,42 @@
-# 依存関係とアクションの定期更新を週1回、種類ごとに1つのPRにまとめて提案する。
-# requirements.txt（streamlit）は移転案内ページのためだけに残しているので、定期更新はしない（脆弱性の修正は下記のとおり届く）。
-# 脆弱性の修正はリポジトリ設定の「Dependabot security updates」で、見つかり次第すぐ PR が来る（この間隔や cooldown とは無関係）。
+# 依存関係とアクションの定期更新。方針は README の「依存関係の更新（Dependabot）」を参照。
+#
+# - 間隔は月1回（毎月1日、日本時間4時）。npm の依存はすべて開発用（テスト・Lint）で、公開ページには1つも入らないので、
+#   急いで上げる理由は脆弱性の修正だけ。それはリポジトリ設定の「Dependabot security updates」で、
+#   見つかり次第すぐ PR が来る（この間隔や cooldown とは無関係）。
+# - グループは「一緒に上げないと壊れるもの」でまとめ、メジャー版の更新も同じ PR に入れる
+#   （例: eslint と @eslint/js は同じメジャー版で揃える必要があり、別々の PR だとどちらも CI が落ちる）。
+#   それ以外はマイナー・パッチだけ1つにまとめ、メジャー版は個別の PR で確かめる。
+# - cooldown: 公開直後の版は取り込まない（乗っ取られたパッケージが公開・削除されるまでの期間を避ける）。メジャー版は長めに待つ。
+# - requirements.txt（streamlit）は移転案内ページのためだけに残しているので、定期更新はしない（脆弱性の修正は上記のとおり届く）。
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: weekly, day: monday, time: "04:00", timezone: Asia/Tokyo }
-    # 公開直後の版は取り込まない（乗っ取られたパッケージが公開・削除されるまでの期間を避ける）
+    schedule: { interval: monthly, time: "04:00", timezone: Asia/Tokyo }
     cooldown: { default-days: 7 }
+    # アクションはコミットSHAで固定していて、使い方も単純なので、メジャー版も含めて月1回の1つの PR にまとめる
     groups:
-      actions: { patterns: ["*"], update-types: [minor, patch] }
+      actions:
+        patterns: ["*"]
       actions-security:
         applies-to: security-updates
         patterns: ["*"]
+
   - package-ecosystem: npm
     directory: /
-    schedule: { interval: weekly, day: monday, time: "04:00", timezone: Asia/Tokyo }
-    cooldown: { default-days: 7 }
+    schedule: { interval: monthly, time: "04:00", timezone: Asia/Tokyo }
+    cooldown: { default-days: 7, semver-major-days: 14 }
+    # 依存は最初に一致したグループに入る（上から順に判定）
     groups:
-      npm: { patterns: ["*"], update-types: [minor, patch] }
+      # ESLint 本体・公式設定・グローバル変数の定義
+      eslint:
+        patterns: ["eslint", "@eslint/*", "globals"]
+      # E2E。@axe-core/playwright は @playwright/test と同じ playwright-core を使う
+      playwright:
+        patterns: ["@playwright/*", "@axe-core/*", "playwright", "playwright-core"]
+      npm-minor:
+        patterns: ["*"]
+        update-types: [minor, patch]
       npm-security:
         applies-to: security-updates
         patterns: ["*"]
