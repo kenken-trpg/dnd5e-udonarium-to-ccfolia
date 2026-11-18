@@ -19,12 +19,16 @@ export default defineConfig({
   expect: { timeout: 5_000 },
   reporter: CI ? [['github'], ['list']] : 'list',
   use: {
-    ...devices['Desktop Chrome'],
     locale: 'ja-JP',
     timezoneId: 'Asia/Tokyo',
     colorScheme: 'light',
     reducedMotion: 'reduce',
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium' }],
+  // 通常は Chromium だけ（npm run test:e2e）。Firefox / WebKit も回すときは npm run test:e2e:all
+  projects: [
+    { name: 'chromium', use: devices['Desktop Chrome'] },
+    { name: 'firefox', use: devices['Desktop Firefox'] },
+    { name: 'webkit', use: devices['Desktop Safari'] },
+  ],
 });

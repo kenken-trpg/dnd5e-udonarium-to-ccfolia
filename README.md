@@ -74,7 +74,9 @@ Python側のテストが両者の出力の一致を確かめる。
 npm ci
 npm test                         # ブラウザ版の変換ロジック（node:test）
 npx playwright install chromium  # 初回だけ
-npm run test:e2e                 # ブラウザ版のE2E（Playwright）
+npm run test:e2e                 # ブラウザ版のE2E（Playwright, Chromium）
+npx playwright install firefox webkit  # 初回だけ
+npm run test:e2e:all             # Chromium / Firefox / WebKit（Safari のエンジン）すべて
 
 .venv/bin/pip install -r requirements.txt -r requirements-test.txt
 .venv/bin/python -m pytest tests # Streamlit版の変換ロジック・両版の出力一致・Streamlit版のE2E
@@ -95,6 +97,9 @@ E2Eテストは不安定（flaky）にならないよう、次の決まりで書
 - **タイマーは偽の時計で進める**: 「コピーしました ✓」が元に戻るような表示は `page.clock` で時間を進めて確かめる。
 - **リトライしない**: 失敗を隠さないよう `retries: 0`。失敗したテストのトレースは CI の成果物（`playwright-traces`）に残る。
 - **ページ内のエラーを見逃さない**: コンソールのエラー・警告、CSP違反、外部への通信があればテストを失敗にする。
+  ブラウザ自身が出すアプリと無関係な出力だけを `tests/e2e/fixtures.mjs` で除外し、特定のテストでだけ出る出力は `test.use({ allowedConsole: /…/ })` で明示する。
+- **Firefox と WebKit を同時に動かさない**: macOS で両方を並行させると WebKit のクリック・ホバーが失敗することがある（単独や Chromium との組み合わせでは起きない）。
+  `npm run test:e2e:all` は WebKit を最後に単独で回し、CI はブラウザごとに別のジョブにしている。
 
 新しいE2Eテストを足したら、`npx playwright test --repeat-each=30 --workers=8` で何度回しても通ることを確かめる。
 
@@ -103,6 +108,9 @@ E2Eテストは不安定（flaky）にならないよう、次の決まりで書
 `.github/workflows/test.yml` が main への push と PR で動く（Markdown だけの変更では動かない）。
 3つのジョブ（単体テスト / ブラウザ版E2E / Streamlit版E2E）が並行して動き、npm・pip はキャッシュする（Playwright のブラウザは、キャッシュから戻すより毎回入れる方が速いのでキャッシュしない）。
 同じブランチに続けて push すると、古い実行は取り消される。
+
+`.github/workflows/e2e-cross-browser.yml` は、ブラウザ版に関わるファイル（`index.html`・`app.js`・`style.css`・`converter.js`・E2Eテストなど）を変えた PR のときだけ、
+Firefox と WebKit で E2E を回す（Actions タブから手動でも実行できる）。
 
 ### GitHub Pages
 

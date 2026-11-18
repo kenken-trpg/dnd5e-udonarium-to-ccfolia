@@ -137,7 +137,9 @@
   function download(blob, name) {
     const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
     document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    // すぐに無効にすると、Firefox が重いときにダウンロードが中身を読む前に消えて保存が終わらない。
+    // 1秒では足りないことがE2Eで分かったので、十分に待ってから無効にする
+    setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
   }
 
   const safeName = s => String(s).replace(/[\\/:*?"<>|]+/g, '_').trim() || 'character';
