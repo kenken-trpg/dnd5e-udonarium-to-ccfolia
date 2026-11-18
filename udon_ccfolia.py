@@ -12,38 +12,81 @@ import re
 import zipfile
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
+from functools import cached_property
 
 DEFAULT_COLOR = "#888888"
+
+# 悪意のある・壊れたファイルでサーバーが固まらないための上限（converter.js の LIMITS と揃える）
+MAX_INPUT_BYTES = 20 * 1024 * 1024  # 読み込むファイル1つの大きさ
+MAX_ZIP_ENTRIES = 1000              # ZIP内のファイル数
+MAX_XML_BYTES = 5 * 1024 * 1024     # 展開後のXML1つの大きさ（ZIP爆弾対策）
+
+_CHARACTER_TAG = re.compile(r"<character[\s>]")
+# ユドナリウムはDTDを出力しない。実体展開による膨張（billion laughs）や外部参照を避けるため拒否する
+_DTD = re.compile(r"<!DOCTYPE|<!ENTITY", re.I)
+# パレット中の {ラベル} 参照
+_REF = re.compile(r"\{([^{}\n]+)\}")
 
 
 class ConvertError(Exception):
     """利用者に見せるエラー"""
 
 
+def _mb(n: int) -> str:
+    return f"{round(n / 1024 / 1024)}MB"
+
+
 # ---------------------------------------------------------------- ZIP / XML
+
+def _zip_name(info: zipfile.ZipInfo) -> str:
+    # 生成ツールのZIPはUTF-8フラグ無しでUTF-8のファイル名を入れるので、CP437として解釈されたものを戻す
+    name = info.filename
+    if not info.flag_bits & 0x800:
+        try:
+            name = name.encode("cp437").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
+    return name
+
+
+def _read_limited(zf: zipfile.ZipFile, info: zipfile.ZipInfo) -> bytes:
+    # file_size は書き換えられるので信用せず、実際に展開した量で打ち切る
+    with zf.open(info) as f:
+        data = f.read(MAX_XML_BYTES + 1)
+    if len(data) > MAX_XML_BYTES:
+        raise ConvertError(f"ZIP内のファイルが大きすぎます（上限 {_mb(MAX_XML_BYTES)}）。")
+    return data
+
 
 def extract_xml_texts(data: bytes, file_name: str = "") -> list[tuple[str, str]]:
     """ZIP / XML のバイト列から、キャラクターXMLを [(ファイル名, XML文字列)] で取り出す"""
+    if len(data) > MAX_INPUT_BYTES:
+        raise ConvertError(f"ファイルが大きすぎます（上限 {_mb(MAX_INPUT_BYTES)}）。")
     if not data.startswith(b"PK\x03\x04"):
         return [(file_name, data.decode("utf-8-sig", errors="replace"))]
     try:
         zf = zipfile.ZipFile(io.BytesIO(data))
-    except zipfile.BadZipFile as e:
+    except (zipfile.BadZipFile, ValueError, OSError) as e:
         raise ConvertError("ZIPファイルとして読み込めませんでした。") from e
+    infos = zf.infolist()
+    if len(infos) > MAX_ZIP_ENTRIES:
+        raise ConvertError(f"ZIP内のファイルが多すぎます（上限 {MAX_ZIP_ENTRIES}個）。")
     out = []
-    for info in zf.infolist():
+    for info in infos:
+        # 画像などは展開しない
         if info.is_dir() or not info.filename.lower().endswith(".xml"):
             continue
-        # 生成ツールのZIPはUTF-8フラグ無しでUTF-8のファイル名を入れるので、CP437として解釈されたものを戻す
-        name = info.filename
-        if not info.flag_bits & 0x800:
-            try:
-                name = name.encode("cp437").decode("utf-8")
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                pass
-        text = zf.read(info).decode("utf-8-sig", errors="replace")
-        if re.search(r"<character[\s>]", text):
-            out.append((name, text))
+        try:
+            raw = _read_limited(zf, info)
+        except ConvertError:
+            raise
+        except NotImplementedError as e:
+            raise ConvertError(f"未対応の圧縮形式です（method={info.compress_type}）。") from e
+        except Exception as e:  # zlib.error, BadZipFile(CRC), 暗号化ZIPの RuntimeError など
+            raise ConvertError("ZIPの展開に失敗しました。ファイルが壊れている可能性があります。") from e
+        text = raw.decode("utf-8-sig", errors="replace")
+        if _CHARACTER_TAG.search(text):
+            out.append((_zip_name(info), text))
     if not out:
         raise ConvertError("ZIP内にユドナリウムのキャラクターXMLが見つかりませんでした。")
     return out
@@ -96,15 +139,23 @@ class Parsed:
     def items(self, kind: str) -> list[Item]:
         return [i for s in self.sections for i in s.items if i.kind == kind]
 
-    def value(self, label: str) -> str:
+    @cached_property
+    def _values(self) -> dict[str, str]:
+        out: dict[str, str] = {}
         for s in self.sections:
             for i in s.items:
-                if i.label == label and i.kind in ("param", "resource"):
-                    return i.value
-        return ""
+                if i.kind in ("param", "resource"):
+                    out.setdefault(i.label, i.value)
+        return out
+
+    def value(self, label: str) -> str:
+        """ラベルの値（同じラベルが複数あれば最初のもの）"""
+        return self._values.get(label, "")
 
 
 def parse_udonarium_xml(xml_text: str) -> Parsed:
+    if _DTD.search(xml_text):
+        raise ConvertError("DTD（<!DOCTYPE>）を含むXMLには対応していません。")
     try:
         root = ET.fromstring(xml_text.encode("utf-8"))
     except ET.ParseError as e:
@@ -191,7 +242,7 @@ def build_memo(parsed: Parsed, include_notes: bool = False, external_url: str = 
 
 
 def expand_references(text: str, values: dict[str, str]) -> str:
-    return re.sub(r"\{([^{}\n]+)\}", lambda m: values.get(m.group(1), m.group(0)), text)
+    return _REF.sub(lambda m: values.get(m.group(1), m.group(0)), text)
 
 
 def _parse_initiative(v: str) -> int:
@@ -249,7 +300,7 @@ def unresolved_references(ccfolia: dict) -> list[str]:
     d = ccfolia["data"]
     known = {x["label"] for x in d["status"] + d["params"]}
     missing: list[str] = []
-    for m in re.finditer(r"\{([^{}\n]+)\}", d["commands"]):
+    for m in _REF.finditer(d["commands"]):
         if m.group(1) not in known and m.group(1) not in missing:
             missing.append(m.group(1))
     return missing
