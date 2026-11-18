@@ -6,6 +6,8 @@ import { test, expect, openApp, fixturePath, upload, XML_PARSE_ERROR_NOISE } fro
 
 const cards = page => page.locator('#results article');
 const card = (page, name) => cards(page).filter({ has: page.getByRole('heading', { name }) });
+/** ボタンの補足説明（ボタンと同じ .has-tip の中にある） */
+const tipOf = button => button.locator('xpath=..').getByRole('tooltip');
 const jsonOf = async c => JSON.parse(await c.locator('[data-f="json"]').textContent());
 
 test.beforeEach(async ({ page }) => {
@@ -124,23 +126,63 @@ test.describe('読めないファイル', () => {
 
 
 test.describe('ツールチップヘルプ', () => {
-  test('マウスを乗せると出て、Esc で閉じる', async ({ page }) => {
-    const wrap = page.locator('.has-tip').filter({ has: page.locator('#opt-expand') });
-    const tip = wrap.getByRole('tooltip');
+  const toggletip = (page, input) => page.locator('.has-tip').filter({ has: page.locator(input) });
+
+  test('「?」は押すと開き、もう一度押すと閉じる', async ({ page }) => {
+    const wrap = toggletip(page, '#opt-expand');
+    const button = wrap.getByRole('button', { name: '参照の置き換えの説明' });
+    const tip = wrap.locator('.tip');
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    await expect(button).toHaveAttribute('aria-controls', await tip.getAttribute('id'));
+    // マウスを乗せただけでは開かない
+    await button.hover();
+    await page.waitForTimeout(600);
     await expect(tip).toBeHidden();
-    await wrap.getByRole('button', { name: '説明' }).hover();
+    await button.click();
     await expect(tip).toBeVisible();
     await expect(tip).toContainText('変換した時点の数値に置き換えます');
-    await page.keyboard.press('Escape');
+    await expect(button).toHaveAttribute('aria-expanded', 'true');
+    await button.click();
     await expect(tip).toBeHidden();
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
   });
 
-  test('キーボードでフォーカスしても出て、説明が読み上げ対象になる', async ({ page }) => {
+  test('「?」の説明は外側を押す・Esc・フォーカスを外すと閉じ、同時に1つしか開かない', async ({ page }) => {
+    const notes = toggletip(page, '#opt-notes');
+    const expand = toggletip(page, '#opt-expand');
+    await notes.locator('.tip-btn').click();
+    await expect(notes.locator('.tip')).toBeVisible();
+    await expand.locator('.tip-btn').click();
+    await expect(expand.locator('.tip')).toBeVisible();
+    await expect(notes.locator('.tip')).toBeHidden();
+    // 説明の中を押しても閉じない（文字を選べる）
+    await expand.locator('.tip').click();
+    await expect(expand.locator('.tip')).toBeVisible();
+    await page.getByRole('heading', { level: 1 }).click();
+    await expect(expand.locator('.tip')).toBeHidden();
+    await expand.locator('.tip-btn').click();
+    await page.keyboard.press('Escape');
+    await expect(expand.locator('.tip')).toBeHidden();
+    // キーボード: Enter で開き、フォーカスがほかの項目へ移ると閉じる
+    // （macOS の WebKit はクリックでも Tab でもボタンにフォーカスしないので、フォーカスは直接移す）
+    await expand.locator('.tip-btn').focus();
+    await page.keyboard.press('Enter');
+    await expect(expand.locator('.tip')).toBeVisible();
+    await page.locator('#opt-color').focus();
+    await expect(expand.locator('.tip')).toBeHidden();
+  });
+
+  test('「?」の横の入力欄に説明が結び付き、説明が2回読み上げられない', async ({ page }) => {
     const box = page.locator('#opt-notes');
-    await box.focus();
-    const tip = page.locator('.has-tip').filter({ has: box }).getByRole('tooltip');
-    await expect(tip).toBeVisible();
     await expect(box).toHaveAccessibleDescription(/【見出し】付きでメモの末尾に追加/);
+    const button = toggletip(page, '#opt-notes').locator('.tip-btn');
+    await expect(button).toHaveAccessibleName('メモに入れる項目の説明');
+    await expect(button).toHaveAccessibleDescription('');
+    // 入力欄にフォーカスしただけでは開かない（読み上げは aria-describedby で足りる）
+    await box.focus();
+    await expect(toggletip(page, '#opt-notes').locator('.tip')).toBeHidden();
+    // 見出しの名前に「?」の名前が混ざらない
+    await expect(page.getByRole('heading', { level: 2, name: '2. 読み込む', exact: true })).toBeVisible();
   });
 
   test('説明文の読み込み上限が converter.js の値と一致している', async ({ page }) => {
@@ -153,10 +195,37 @@ test.describe('ツールチップヘルプ', () => {
     }
   });
 
-  test('説明の上にマウスを動かしても消えない', async ({ page }) => {
-    const wrap = page.locator('.has-tip').filter({ has: page.locator('#opt-expand') });
-    const tip = wrap.getByRole('tooltip');
-    await wrap.getByRole('button', { name: '説明' }).hover();
+  test('ボタンの説明はマウスを少し乗せ続けると出て、押すと閉じる', async ({ page }) => {
+    await page.clock.install();
+    await openApp(page);
+    await upload(page, 'sorcerer.zip');
+    const button = cards(page).first().getByRole('button', { name: 'JSONを保存' });
+    const tip = tipOf(button);
+    await button.hover();
+    await page.clock.runFor(300);
+    await expect(tip, '通り過ぎただけでは出ない').toBeHidden();
+    await page.clock.runFor(200);
+    await expect(tip).toBeVisible();
+    const download = page.waitForEvent('download');
+    await button.click();
+    await download;
+    await expect(tip).toBeHidden();
+    await page.clock.runFor(1000);
+    await expect(tip, '押したあと、マウスが乗ったままでも出し直さない').toBeHidden();
+    // 乗せ直すと出る
+    await page.mouse.move(1, 1);
+    await button.hover();
+    await page.clock.runFor(500);
+    await expect(tip).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(tip).toBeHidden();
+  });
+
+  test('ボタンの説明の上にマウスを動かしても消えない', async ({ page }) => {
+    await upload(page, 'sorcerer.zip');
+    const button = cards(page).first().getByRole('button', { name: 'ココフォリア用にコピー' });
+    const tip = tipOf(button);
+    await button.hover();
     await expect(tip).toBeVisible();
     const box = await tip.boundingBox();
     // ボタンから説明の中央へ、隙間を通ってゆっくり動かす
@@ -166,23 +235,31 @@ test.describe('ツールチップヘルプ', () => {
     await expect(tip).toBeHidden();
   });
 
-  test('フォーカスだけで出ている説明は、下にあるもののクリックを横取りしない', async ({ page }) => {
-    await page.locator('#opt-notes').focus();
-    const tip = page.locator('.has-tip').filter({ has: page.locator('#opt-notes') }).getByRole('tooltip');
+  test('ボタンの説明はキーボードで移動したときに出て、下にあるもののクリックを横取りしない', async ({ page }) => {
+    await upload(page, 'sorcerer.zip');
+    const result = cards(page).first();
+    const button = result.getByRole('button', { name: 'ココフォリア用にコピー' });
+    // キーボード操作のあとのフォーカス（:focus-visible）。macOS の WebKit は Tab でボタンに移らないので、
+    // キーを1つ押してからフォーカスを直接移す
+    await page.keyboard.press('Shift');
+    await button.focus();
+    const tip = tipOf(button);
     await expect(tip).toBeVisible();
     expect(await tip.evaluate(el => {
       const r = el.getBoundingClientRect();
       return !!document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('.tip');
     })).toBe(false);
+    await page.getByRole('button', { name: 'この結果を削除' }).focus();
+    await expect(tip).toBeHidden();
   });
 
   test('画面の下端では説明を上に出す', async ({ page }) => {
     await page.setViewportSize({ width: 800, height: 400 });
-    const wrap = page.locator('.has-tip').filter({ has: page.locator('#opt-expand') });
+    const wrap = toggletip(page, '#opt-expand');
     // ? ボタンが画面の下端すれすれに来るようにスクロールする
     await wrap.evaluate(el => window.scrollBy(0, el.getBoundingClientRect().bottom - window.innerHeight + 2));
-    await wrap.getByRole('button', { name: '説明' }).hover();
-    const tip = wrap.getByRole('tooltip');
+    await wrap.locator('.tip-btn').click();
+    const tip = wrap.locator('.tip');
     await expect(tip).toBeVisible();
     await expect(wrap).toHaveClass(/tip-above/);
     const [tipBox, wrapBox] = [await tip.boundingBox(), await wrap.boundingBox()];
@@ -196,8 +273,15 @@ test.describe('ツールチップヘルプ', () => {
     await expect(result.getByRole('button', { name: 'ココフォリア用にコピー' })).toHaveAccessibleDescription(/Ctrl\+V/);
     await expect(result.getByRole('button', { name: 'JSONを保存' })).toHaveAccessibleDescription(/バックアップ/);
     await expect(result.getByRole('button', { name: 'この結果を削除' })).toHaveAccessibleDescription(/このキャラクターだけ/);
-    await expect(page.getByRole('button', { name: '全員分をZIPで保存' })).toHaveAccessibleDescription(/1体ずつ/);
+    await expect(page.getByRole('button', { name: '全員分をZIPで保存' })).toHaveAccessibleDescription(/まとめて保存/);
     await expect(page.getByRole('button', { name: 'すべてクリア' })).toHaveAccessibleDescription(/出力オプションの記憶は消えません/);
+    // 知らないと困る注意は説明の中だけでなく、画面に常に出す
+    await expect(page.locator('#result-tools')).toContainText('1体ずつ貼り付けてください');
+    // 概要欄は Tab で止まらず、説明は横の「?」で開く
+    await expect(result.locator('[data-f="chips"]')).not.toHaveAttribute('tabindex');
+    await expect(result.getByRole('group', { name: '変換内容の概要' })).toBeVisible();
+    await result.getByRole('button', { name: '概要の見方' }).click();
+    await expect(result.getByText('能力値・技能などはパラメータになります')).toBeVisible();
   });
 
   test('? ボタンはそれぞれ何の説明か分かる名前を持つ', async ({ page }) => {
@@ -212,16 +296,15 @@ test.describe('ツールチップヘルプ', () => {
     await expect(cards(page)).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth), '横スクロールが出ない').toBe(360);
     const wraps = await page.locator('.has-tip:has(> .tip-btn)').all();
-    expect(wraps.length).toBeGreaterThanOrEqual(4);
+    expect(wraps.length).toBeGreaterThanOrEqual(5);
     for (const wrap of wraps) {
-      // 前の説明が次の ? ボタンに重なっていると、マウスが説明の上に乗ったままになるので一度外す
-      await page.mouse.move(1, 1);
-      await wrap.locator('> .tip-btn').hover();
+      await wrap.locator('> .tip-btn').click();
       const tip = wrap.locator('> .tip');
       await expect(tip).toBeVisible();
       const box = await tip.boundingBox();
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(360);
+      await page.keyboard.press('Escape');
     }
   });
 });
@@ -334,19 +417,35 @@ test('Clipboard APIと代替コピーが失敗したら手動コピーを案内�
   await expect(page.locator('textarea')).toHaveCount(0);
 });
 
-test('タッチ操作で説明を開き、Esc後に再表示できる', async ({ browser }) => {
-  const context = await browser.newContext({ hasTouch: true, viewport: { width: 360, height: 740 } });
+test('タッチ操作: 「?」はタップで開閉し、ボタンを押しても説明が残らない', async ({ browser, browserName }) => {
+  // Firefox は isMobile に対応しない（タッチ端末の (hover: none) を再現できない）
+  test.skip(browserName === 'firefox', 'タッチ端末のメディア特性を再現できない');
+  const context = await browser.newContext({ hasTouch: true, isMobile: browserName === 'chromium', viewport: { width: 360, height: 740 } });
   const page = await context.newPage();
   try {
     // ページfixtureのルーティングを使う通常テストと同じファイルを開く。
     await openApp(page, pathToFileURL(fixturePath('../../index.html')).href);
+    expect(await page.evaluate(() => matchMedia('(hover: hover) and (pointer: fine)').matches), 'タッチ端末として動いている').toBe(false);
     const wrap = page.locator('.has-tip').filter({ has: page.locator('#opt-expand') });
-    await wrap.getByRole('button').tap();
-    await expect(wrap.getByRole('tooltip')).toBeVisible();
+    const tip = wrap.locator('.tip');
+    await wrap.locator('.tip-btn').tap();
+    await expect(tip).toBeVisible();
+    await wrap.locator('.tip-btn').tap();
+    await expect(tip).toBeHidden();
+    await wrap.locator('.tip-btn').tap();
+    await page.getByRole('heading', { level: 1 }).tap();
+    await expect(tip).toBeHidden();
+    await wrap.locator('.tip-btn').tap();
     await page.keyboard.press('Escape');
-    await expect(wrap.getByRole('tooltip')).toBeHidden();
-    await wrap.getByRole('button').tap();
-    await expect(wrap.getByRole('tooltip')).toBeVisible();
+    await expect(tip).toBeHidden();
+
+    await page.locator('#file-input').setInputFiles(fixturePath('sorcerer.zip'));
+    const button = page.getByRole('button', { name: 'JSONを保存' });
+    const download = page.waitForEvent('download');
+    await button.tap();
+    await download;
+    await page.waitForTimeout(600);
+    await expect(tipOf(button), 'タップしたボタンの説明で画面をふさがない').toBeHidden();
   } finally {
     await context.close();
   }
