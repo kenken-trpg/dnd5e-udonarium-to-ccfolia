@@ -20,6 +20,8 @@
    */
   const LIMITS = Object.freeze({
     maxInputBytes: 20 * 1024 * 1024, // 読み込むファイル1つの大きさ
+    maxBatchFiles: 50,              // 1回に選べるファイル数
+    maxTotalXmlBytes: 20 * 1024 * 1024, // ZIP全体で展開するXMLの合計
     maxZipEntries: 1000,             // ZIP内のファイル数
     maxXmlBytes: 5 * 1024 * 1024,    // 展開後のXML1つの大きさ（ZIP爆弾対策）
   });
@@ -89,6 +91,7 @@
     let p = dv.getUint32(eocd + 16, true);
     const utf8 = new TextDecoder('utf-8');
     const files = [];
+    let totalBytes = 0;
     for (let k = 0; k < count; k++) {
       if (!inBounds(p, 46) || dv.getUint32(p, true) !== SIG_CENTRAL) throw new Error(BROKEN_ZIP);
       const method = dv.getUint16(p + 10, true);
@@ -97,7 +100,7 @@
       const extraLen = dv.getUint16(p + 30, true);
       const commentLen = dv.getUint16(p + 32, true);
       const localOff = dv.getUint32(p + 42, true);
-      if (!inBounds(p + 46, nameLen)) throw new Error(BROKEN_ZIP);
+      if (!inBounds(p + 46, nameLen + extraLen + commentLen)) throw new Error(BROKEN_ZIP);
       const name = utf8.decode(u8.subarray(p + 46, p + 46 + nameLen));
       p += 46 + nameLen + extraLen + commentLen;
       if (name.endsWith('/') || !filter(name)) continue;
@@ -106,15 +109,19 @@
       const start = localOff + 30 + dv.getUint16(localOff + 26, true) + dv.getUint16(localOff + 28, true);
       if (!inBounds(start, compSize)) throw new Error(BROKEN_ZIP);
       const raw = u8.subarray(start, start + compSize);
+      const remaining = LIMITS.maxTotalXmlBytes - totalBytes;
+      if (remaining <= 0) throw new Error('ZIP内のXMLの合計が大きすぎます（上限20MB）。');
+      const limit = Math.min(LIMITS.maxXmlBytes, remaining);
       let data;
       if (method === 0) {
-        if (raw.length > LIMITS.maxXmlBytes) throw new Error(`ZIP内のファイルが大きすぎます（上限 ${MB(LIMITS.maxXmlBytes)}）。`);
+        if (raw.length > limit) throw new Error(`ZIP内のファイルが大きすぎます（上限 ${MB(limit)}）。`);
         data = raw;
       } else if (method === 8) {
-        data = await inflateRaw(raw, LIMITS.maxXmlBytes);
+        data = await inflateRaw(raw, limit);
       } else {
         throw new Error(`未対応の圧縮形式です（method=${method}）。`);
       }
+      totalBytes += data.length;
       files.push({ name, data });
     }
     return files;
@@ -127,7 +134,10 @@
     const u8 = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     checkInputSize(u8);
     const utf8 = new TextDecoder('utf-8');
-    if (!isZip(u8)) return [{ name: fileName, xml: utf8.decode(u8) }];
+    if (!isZip(u8)) {
+      if (u8.length > LIMITS.maxXmlBytes) throw new Error(`XMLが大きすぎます（上限 ${MB(LIMITS.maxXmlBytes)}）。`);
+      return [{ name: fileName, xml: utf8.decode(u8) }];
+    }
     // 画像などは展開しない
     const xmls = (await unzip(u8, { filter: isXmlName }))
       .map(f => ({ name: f.name, xml: utf8.decode(f.data) }))
@@ -184,10 +194,13 @@
 
     const sections = [];
     const walk = (el, section) => {
-      for (const c of dataChildren(el)) {
+      const stack = dataChildren(el).reverse();
+      while (stack.length) {
+        const c = stack.pop();
         const label = c.getAttribute('name') || '';
         const type = c.getAttribute('type') || '';
-        if (dataChildren(c).length) { walk(c, section); continue; }
+        const children = dataChildren(c);
+        if (children.length) { stack.push(...children.reverse()); continue; }
         const text = c.textContent || '';
         if (type === 'numberResource') {
           const max = cleanText(text);

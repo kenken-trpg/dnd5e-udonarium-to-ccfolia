@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { deflateRawSync } from 'node:zlib';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -137,4 +138,48 @@ test('圧縮データが壊れたZIPは分かるエラーになる', async () =>
   const start = 30 + dv.getUint16(26, true) + dv.getUint16(28, true); // 1つ目のファイルの圧縮データの先頭
   for (let i = start; i < start + 200; i++) zip[i] ^= 0xff;
   await assert.rejects(C.extractXmlTexts(zip), /展開に失敗しました/);
+});
+
+test('直接読み込むXMLにも5MBの上限を適用する', async () => {
+  await assert.rejects(C.extractXmlTexts(new Uint8Array(C.LIMITS.maxXmlBytes + 1), 'large.xml'), /XMLが大きすぎます/);
+});
+
+test('個別上限以内のXMLでもZIP全体の展開量が20MBを超えたら拒否する', async () => {
+  const payload = deflateRawSync(Buffer.alloc(C.LIMITS.maxXmlBytes, 65));
+  const local = [];
+  const central = [];
+  let offset = 0;
+  for (let i = 0; i < 5; i++) {
+    const name = Buffer.from(`${i}.xml`);
+    const header = Buffer.alloc(30);
+    header.writeUInt32LE(0x04034b50);
+    header.writeUInt16LE(8, 8);
+    header.writeUInt32LE(payload.length, 18);
+    header.writeUInt32LE(C.LIMITS.maxXmlBytes, 22);
+    header.writeUInt16LE(name.length, 26);
+    local.push(header, name, payload);
+    const dir = Buffer.alloc(46);
+    dir.writeUInt32LE(0x02014b50);
+    dir.writeUInt16LE(8, 10);
+    dir.writeUInt32LE(payload.length, 20);
+    dir.writeUInt32LE(C.LIMITS.maxXmlBytes, 24);
+    dir.writeUInt16LE(name.length, 28);
+    dir.writeUInt32LE(offset, 42);
+    central.push(dir, name);
+    offset += header.length + name.length + payload.length;
+  }
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50);
+  end.writeUInt16LE(5, 8);
+  end.writeUInt16LE(5, 10);
+  end.writeUInt32LE(Buffer.concat(central).length, 12);
+  end.writeUInt32LE(offset, 16);
+  await assert.rejects(C.unzip(Buffer.concat([...local, ...central, end])), /合計が大きすぎます/);
+});
+
+test('深く入れ子になったdataも順序を保って変換できる', () => {
+  const depth = 2000;
+  const xml = `<character><data name="character"><data name="detail"><data name="能力">${'<data>'.repeat(depth)}<data name="筋力">10</data>${'</data>'.repeat(depth)}<data name="敏捷力">12</data></data></data></data></character>`;
+  const parsed = C.parseUdonariumXml(xml, DOMParser);
+  assert.deepEqual(C.toCcfolia(parsed).data.params, [{ label: '筋力', value: '10' }, { label: '敏捷力', value: '12' }]);
 });

@@ -119,4 +119,18 @@ Firefox と WebKit で E2E を回す（Actions タブから手動でも実行で
 - **XML**: DTD（`<!DOCTYPE>` / `<!ENTITY>`）を含むXMLは解析前に拒否する（実体展開による膨張・外部参照の対策）。
 - **壊れたZIP**: 範囲外を指すヘッダなどは利用者向けのエラーにし、例外の詳細を画面に出さない。
 - **コード検査**: GitHub の CodeQL（default setup）が JavaScript・Python・ワークフローを push と PR のたびに検査する。結果は Security タブに出る。
-- **CI**: アクションはコミットSHAで固定し、`GITHUB_TOKEN` は読み取り専用、`npm ci --ignore-scripts`。Dependabot（`.github/dependabot.yml`）が月1回更新を提案し、脆弱性の修正は見つかり次第 PR を作る。
+- **CI**: アクションはコミットSHAで固定し、`GITHUB_TOKEN` は読み取り専用、`npm ci --ignore-scripts`。Dependabot（`.github/dependabot.yml`）が毎週月曜（日本時間4時）に更新を提案し、脆弱性の修正は見つかり次第 PR を作る。
+
+### 更新とE2Eの運用
+
+Dependabot は npm / GitHub Actions ごとに minor・patch の更新をまとめ、major は個別に提案します。
+通常更新は公開から7日待ちます。セキュリティ更新は別グループにまとめます（リポジトリ側で Dependabot security updates の有効化が必要です）。
+移転案内用の Streamlit はバージョン更新の対象外です。
+
+CI は npm のダウンロードキャッシュを優先利用します。既存のチェック名を維持し、ブランチ保護への影響を避けています。
+Firefox / WebKit は Chromium 専用のアクセシビリティテストを収集しません。
+WebKit は1ワーカーでテストを直列に実行し、macOSで複数ウィンドウのクリック・ホバーが競合することを避けます。
+複数のPlaywrightコマンドは順番に実行してください（成果物フォルダやmacOSのブラウザ操作が競合します）。
+コピーのE2Eはブラウザ内で Clipboard API を差し替え、OSの共有クリップボードや権限設定による競合を防ぎます。
+実際のクリップボードへの貼り付けは、公開ページとダウンロード版で手動確認してください。
+安定性の反復確認: `npx playwright test --project=chromium --repeat-each=5`。

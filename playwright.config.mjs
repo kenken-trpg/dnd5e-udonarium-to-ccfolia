@@ -28,7 +28,8 @@ export default defineConfig({
   // 通常は Chromium だけ（npm run test:e2e）。Firefox / WebKit も回すときは npm run test:e2e:all
   projects: [
     { name: 'chromium', use: devices['Desktop Chrome'] },
-    { name: 'firefox', use: devices['Desktop Firefox'] },
-    { name: 'webkit', use: devices['Desktop Safari'] },
+    { name: 'firefox', testIgnore: '**/a11y.spec.mjs', use: devices['Desktop Firefox'] },
+    // macOSの複数WebKitウィンドウ間でクリック・ホバーが競合するため、ファイル内は直列実行。
+    { name: 'webkit', workers: 1, fullyParallel: false, testIgnore: '**/a11y.spec.mjs', use: devices['Desktop Safari'] },
   ],
 });

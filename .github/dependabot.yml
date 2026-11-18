@@ -1,18 +1,24 @@
-# 依存関係とアクションの定期更新を月1回、種類ごとに1つのPRにまとめて提案する。
+# 依存関係とアクションの定期更新を週1回、種類ごとに1つのPRにまとめて提案する。
 # requirements.txt（streamlit）は移転案内ページのためだけに残しているので、定期更新はしない（脆弱性の修正は下記のとおり届く）。
 # 脆弱性の修正はリポジトリ設定の「Dependabot security updates」で、見つかり次第すぐ PR が来る（この間隔や cooldown とは無関係）。
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: monthly }
+    schedule: { interval: weekly, day: monday, time: "04:00", timezone: Asia/Tokyo }
     # 公開直後の版は取り込まない（乗っ取られたパッケージが公開・削除されるまでの期間を避ける）
     cooldown: { default-days: 7 }
     groups:
-      actions: { patterns: ["*"] }
+      actions: { patterns: ["*"], update-types: [minor, patch] }
+      actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
   - package-ecosystem: npm
     directory: /
-    schedule: { interval: monthly }
+    schedule: { interval: weekly, day: monday, time: "04:00", timezone: Asia/Tokyo }
     cooldown: { default-days: 7 }
     groups:
-      npm: { patterns: ["*"] }
+      npm: { patterns: ["*"], update-types: [minor, patch] }
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
