@@ -101,7 +101,7 @@ E2Eテストは不安定（flaky）にならないよう、次の決まりで書
 ### CI
 
 `.github/workflows/test.yml` が main への push と PR で動く（Markdown だけの変更では動かない）。
-3つのジョブ（単体テスト / ブラウザ版E2E / Streamlit版E2E）が並行して動き、npm・pip・Playwright のブラウザはキャッシュする。
+3つのジョブ（単体テスト / ブラウザ版E2E / Streamlit版E2E）が並行して動き、npm・pip はキャッシュする（Playwright のブラウザは、キャッシュから戻すより毎回入れる方が速いのでキャッシュしない）。
 同じブランチに続けて push すると、古い実行は取り消される。
 
 ### GitHub Pages
