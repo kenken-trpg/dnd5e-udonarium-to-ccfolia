@@ -3,7 +3,9 @@
 [D&D5e ユドナリウムPCコマ生成ツール](https://unib-5e-udonarium-pc.onrender.com/)（うにバター氏作）で保存したZIPを、ココフォリアに貼り付けられるキャラクターデータに変換します。
 **変換はブラウザ内で完結し、ファイルを外部に送信しません。**
 
-**[変換ツールを開く](https://kenken-trpg.github.io/dnd5e-udonarium-to-ccfolia/)** · [スクリーンショット付きマニュアル](docs/manual.md)
+**[変換ツールを開く](https://kenken-trpg.github.io/dnd5e-udonarium-to-ccfolia/)** · [スクリーンショット付きマニュアル](docs/manual.md) · [動画マニュアル（YouTube・約1分30秒）](https://www.youtube.com/watch?v=qQDg6C3P3Zo)
+
+<a href="https://www.youtube.com/watch?v=qQDg6C3P3Zo"><img src="https://i.ytimg.com/vi/qQDg6C3P3Zo/maxresdefault.jpg" width="480" alt="動画マニュアル: キャラクターシートからココフォリアのコマを作る方法（YouTube）"></a>
 
 ## 使い方
 
