@@ -14,8 +14,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: CI,
   retries: 0,
-  // GitHub の公開リポジトリのランナーは4コア。テストは互いに独立しているので4並列で回す
-  workers: CI ? 4 : undefined,
+  // CI は2並列。4並列（ランナーは4コア）も試したが、ブラウザとテスト本体でコアを取り合い、速くならなかった
+  workers: CI ? 2 : undefined,
   timeout: 15_000,
   expect: { timeout: 5_000 },
   reporter: CI ? [['github'], ['list']] : 'list',
