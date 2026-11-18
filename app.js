@@ -33,6 +33,10 @@
       };
       wrap.addEventListener('mouseenter', place);
       wrap.addEventListener('focusin', place);
+      wrap.querySelector(':scope > .tip-btn')?.addEventListener('click', () => {
+        wrap.querySelector(':scope > .tip-btn').focus();
+        place();
+      });
     }
   }
   // Esc で開いているツールチップを閉じる（次にマウスを乗せる・フォーカスするまで）
@@ -76,7 +80,11 @@
   function renderAll() {
     if (renderQueued) return;
     renderQueued = true;
-    requestAnimationFrame(() => { renderQueued = false; entries.forEach(render); });
+    requestAnimationFrame(() => {
+      renderQueued = false;
+      const options = outputOptions();
+      entries.forEach(entry => render(entry, options));
+    });
   }
   for (const id of ['opt-notes', 'opt-expand', 'opt-color']) {
     $(id).addEventListener('input', () => { saveOptions(); renderAll(); });
@@ -85,10 +93,10 @@
   // ---- 変換結果の表示
   const chip = text => Object.assign(document.createElement('span'), { className: 'chip', textContent: text });
 
-  function render(entry) {
-    const out = C.toCcfolia(entry.parsed, outputOptions());
+  function render(entry, options = outputOptions()) {
+    const out = C.toCcfolia(entry.parsed, options);
     entry.out = out;
-    const f = name => entry.el.querySelector(`[data-f="${name}"]`);
+    const f = name => entry.fields.get(name);
     const d = out.data;
     const values = new Map(d.params.map(p => [p.label, p.value]));
     const val = l => values.get(l) || '';
@@ -112,15 +120,17 @@
 
     f('palette').textContent = d.commands;
     f('memo').textContent = d.memo;
-    f('json').textContent = JSON.stringify(out, null, 2);
+    entry.json = JSON.stringify(out, null, 2);
+    f('json').textContent = entry.json;
   }
 
   function addEntry(parsed) {
     const el = $('result-tpl').content.firstElementChild.cloneNode(true);
-    const entry = { parsed, el };
+    const fields = new Map([...el.querySelectorAll('[data-f]')].map(node => [node.dataset.f, node]));
+    const entry = { parsed, el, fields };
     el.querySelector('[data-a="copy"]').addEventListener('click', e => copy(entry, e.currentTarget));
     el.querySelector('[data-a="save"]').addEventListener('click', () =>
-      download(new Blob([JSON.stringify(entry.out, null, 2)], { type: 'application/json' }), safeName(parsed.name) + '_ccfolia.json'));
+      download(new Blob([entry.json], { type: 'application/json' }), safeName(parsed.name) + '_ccfolia.json'));
     entries.push(entry);
     results.append(el);
     wireTips(el);
@@ -146,7 +156,7 @@
     try {
       await navigator.clipboard.writeText(text);
     } catch {
-      ok = copyWithExecCommand(text);
+      try { ok = copyWithExecCommand(text); } catch { ok = false; }
     }
     if (!ok) { setMsg('クリップボードにコピーできませんでした。「JSON」欄の内容を手動でコピーしてください。', 'err'); return; }
     btn.textContent = 'コピーしました ✓';
@@ -169,21 +179,34 @@
   async function handleFiles(fileList) {
     const files = [...fileList];
     if (!files.length) return;
+    if (files.length > C.LIMITS.maxBatchFiles || files.reduce((sum, file) => sum + file.size, 0) > C.LIMITS.maxInputBytes) {
+      setMsg(`一度に読み込めるのは ${C.LIMITS.maxBatchFiles}ファイル、合計20MBまでです。分けて読み込んでください。`, 'err');
+      return;
+    }
     const gen = ++loadGeneration;
     clearEntries();
     setMsg('読み込み中…');
-    // 読み込み・展開は並行して進め、表示は選んだ順にする
-    const loaded = await Promise.all(files.map(async file => {
+    // 1件ずつ読み込み、同時展開によるメモリ消費を抑える。新しい選択が来たら中断する。
+    const loaded = [];
+    let totalXmlBytes = 0;
+    let totalCharacters = 0;
+    for (const file of files) {
+      if (gen !== loadGeneration) return;
       try {
         if (file.size > C.LIMITS.maxInputBytes) {
           throw new Error(`ファイルが大きすぎます（上限 ${Math.round(C.LIMITS.maxInputBytes / 1024 / 1024)}MB）。`);
         }
         const xmls = await C.extractXmlTexts(await file.arrayBuffer(), file.name);
-        return { chars: xmls.map(x => C.parseUdonariumXml(x.xml)) };
+        totalXmlBytes += xmls.reduce((sum, x) => sum + new TextEncoder().encode(x.xml).length, 0);
+        totalCharacters += xmls.length;
+        if (totalXmlBytes > C.LIMITS.maxTotalXmlBytes || totalCharacters > C.LIMITS.maxBatchFiles) {
+          throw new Error('変換対象が多すぎます（XML合計20MB、50体まで）。分けて読み込んでください。');
+        }
+        loaded.push({ chars: xmls.map(x => C.parseUdonariumXml(x.xml)) });
       } catch (err) {
-        return { error: `${file.name}: ${err.message}` };
+        loaded.push({ error: `${file.name}: ${err.message}` });
       }
-    }));
+    }
     if (gen !== loadGeneration) return;
 
     const chars = loaded.flatMap(r => r.chars || []);

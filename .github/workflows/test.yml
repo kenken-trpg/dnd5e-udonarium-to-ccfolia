@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm ci --ignore-scripts --no-audit --no-fund --prefer-offline
       - run: npm run lint
 
   unit:
@@ -46,7 +46,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm ci --ignore-scripts --no-audit --no-fund --prefer-offline
       - run: npm test
 
   e2e-browser:
@@ -61,7 +61,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm ci --ignore-scripts --no-audit --no-fund --prefer-offline
       # 必要なのはヘッドレス版の Chromium だけ。ブラウザをキャッシュしても、
       # 復元後に OS の依存パッケージを入れる時間（約20秒）の方が、毎回ダウンロードする時間（約13秒）より長いのでキャッシュしない
       - run: npx playwright install --with-deps --only-shell chromium

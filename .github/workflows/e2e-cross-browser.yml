@@ -12,6 +12,9 @@ on:
       - tests/e2e/**
       - tests/fixtures/**
       - playwright.config.mjs
+      - package.json
+      - scripts/build-site.sh
+      - docs/offline-readme.txt
       - package-lock.json
       - .github/workflows/e2e-cross-browser.yml
   workflow_dispatch:
@@ -42,7 +45,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm ci --ignore-scripts --no-audit --no-fund --prefer-offline
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npx playwright test --project=${{ matrix.browser }}
       - if: failure()

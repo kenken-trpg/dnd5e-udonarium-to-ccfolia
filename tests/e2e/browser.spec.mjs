@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { test, expect, openApp, fixturePath, ORIGIN, XML_PARSE_ERROR_NOISE } from './fixtures.mjs';
+import { test, expect, openApp, fixturePath, XML_PARSE_ERROR_NOISE } from './fixtures.mjs';
 
 const cards = page => page.locator('#results article');
 const card = (page, name) => cards(page).filter({ has: page.getByRole('heading', { name }) });
@@ -49,6 +49,7 @@ test('ドラッグ＆ドロップで読み込める', async ({ page }) => {
 
 test('続けて読み込むと前の結果は置き換わる', async ({ page }) => {
   await upload(page, 'sorcerer.zip');
+  await expect(page.locator('#msg')).toHaveText('変換しました（1体）。');
   await upload(page, 'attacks.xml');
   await expect(cards(page)).toHaveCount(1);
   await expect(card(page, 'テスト・アーマラー')).toHaveCount(1);
@@ -72,25 +73,23 @@ test('出力オプションで結果が変わる', async ({ page }) => {
   await expect(attacks.locator('[data-f="json"]')).toContainText('"color": "#336699"');
 });
 
-test('コピーするとクリップボードにJSONが入り、少しするとボタン表示が戻る', async ({ page, context, browserName }) => {
-  // クリップボードの中身を読み返せるのは Chromium だけ（Firefox / WebKit は自動操作で読み取り権限を付けられない）
-  const canReadBack = browserName === 'chromium';
-  if (canReadBack) await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: ORIGIN });
-  await page.clock.install(); // ボタン表示を戻すタイマーを実時間に依存させない
+test('コピーするJSONとボタン表示の復帰を確認する', async ({ page }) => {
+  // OSの共有クリップボードへの競合や、ブラウザごとの権限差をなくす。
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+      writeText: async text => { window.copiedText = text; },
+    } });
+  });
+  await page.clock.install();
   await upload(page, 'sorcerer.zip');
-  const btn = cards(page).first().getByRole('button', { name: 'ココフォリア用にコピー' });
+  const btn = cards(page).first().locator('[data-a="copy"]');
   await btn.click();
-  await expect(page.locator('#msg')).toHaveText('「テスト・ソーサラー」をコピーしました。ココフォリアの盤面で貼り付けてください。');
-  await expect(cards(page).first().locator('[data-a="copy"]')).toHaveText('コピーしました ✓');
-
-  if (canReadBack) {
-    const pasted = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
-    expect(pasted.kind).toBe('character');
-    expect(pasted.data.name).toBe('テスト・ソーサラー');
-  }
-
+  await expect(btn).toHaveText('コピーしました ✓');
+  const pasted = JSON.parse(await page.evaluate(() => window.copiedText));
+  expect(pasted.kind).toBe('character');
+  expect(pasted.data.name).toBe('テスト・ソーサラー');
   await page.clock.runFor(2000);
-  await expect(cards(page).first().locator('[data-a="copy"]')).toHaveText('ココフォリア用にコピー');
+  await expect(btn).toHaveText('ココフォリア用にコピー');
 });
 
 test('JSONを保存できる', async ({ page }) => {
@@ -228,4 +227,45 @@ test('配布用ZIPを展開してそのまま使える', async ({ page, browserN
   await openApp(page, pathToFileURL(`${dir}/index.html`).href);
   await upload(page, 'sorcerer.zip');
   await expect(card(page, 'テスト・ソーサラー')).toHaveCount(1);
+});
+
+test('選択数の上限を超えても直前の変換結果を保持する', async ({ page }) => {
+  await upload(page, 'attacks.xml');
+  await expect(cards(page)).toHaveCount(1);
+  await page.locator('#file-input').setInputFiles(Array.from({ length: 51 }, (_, i) => ({
+    name: `${i}.xml`, mimeType: 'text/xml', buffer: Buffer.from('<character/>'),
+  })));
+  await expect(page.locator('#msg')).toContainText('50ファイル、合計20MBまで');
+  await expect(card(page, 'テスト・アーマラー')).toHaveCount(1);
+});
+
+test('Clipboard APIと代替コピーが失敗したら手動コピーを案内する', async ({ page }) => {
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+      writeText: async () => { throw new Error('denied'); },
+    } });
+    document.execCommand = () => false;
+  });
+  await upload(page, 'attacks.xml');
+  await cards(page).first().locator('[data-a="copy"]').click();
+  await expect(page.locator('#msg')).toContainText('手動でコピーしてください');
+  await expect(page.locator('textarea')).toHaveCount(0);
+});
+
+test('タッチ操作で説明を開き、Esc後に再表示できる', async ({ browser }) => {
+  const context = await browser.newContext({ hasTouch: true, viewport: { width: 360, height: 740 } });
+  const page = await context.newPage();
+  try {
+    // ページfixtureのルーティングを使う通常テストと同じファイルを開く。
+    await openApp(page, pathToFileURL(fixturePath('../../index.html')).href);
+    const wrap = page.locator('.has-tip').filter({ has: page.locator('#opt-expand') });
+    await wrap.getByRole('button').tap();
+    await expect(wrap.getByRole('tooltip')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(wrap.getByRole('tooltip')).toBeHidden();
+    await wrap.getByRole('button').tap();
+    await expect(wrap.getByRole('tooltip')).toBeVisible();
+  } finally {
+    await context.close();
+  }
 });

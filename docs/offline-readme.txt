@@ -13,3 +13,7 @@ D&D5e ココフォリア変換（手元で使う版）
 
 マニュアル・よくある質問
   https://github.com/kenken-trpg/dnd5e-udonarium-to-ccfolia/blob/main/docs/manual.md
+
+読み込み上限: 一度に50ファイル・50体、入力の合計20MBまで。
+XMLは1つ5MB、ZIPの展開後・一度の変換対象XMLの合計は20MBまでです。
+「?」はマウス・タップ・キーボードのTabで説明を表示し、Escで閉じられます。
