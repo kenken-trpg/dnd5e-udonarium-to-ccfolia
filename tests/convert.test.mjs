@@ -121,3 +121,20 @@ test('パレットの {constructor} などは組み込みプロパティに化�
   const str = byLabel(out.data.params, '筋力修正').value;
   assert.equal(out.data.commands, `{constructor} {toString} ${str}`);
 });
+
+test('ZIP内のファイルが多すぎるものは読み込まない', async () => {
+  // セントラルディレクトリの終端レコード（EOCD）だけのZIPで、ファイル数を上限+1にする
+  const eocd = new Uint8Array(22);
+  const dv = new DataView(eocd.buffer);
+  dv.setUint32(0, 0x06054b50, true);
+  dv.setUint16(10, C.LIMITS.maxZipEntries + 1, true);
+  await assert.rejects(C.unzip(eocd), /多すぎます/);
+});
+
+test('圧縮データが壊れたZIPは分かるエラーになる', async () => {
+  const zip = new Uint8Array(fixture('sorcerer.zip'));
+  const dv = new DataView(zip.buffer, zip.byteOffset);
+  const start = 30 + dv.getUint16(26, true) + dv.getUint16(28, true); // 1つ目のファイルの圧縮データの先頭
+  for (let i = start; i < start + 200; i++) zip[i] ^= 0xff;
+  await assert.rejects(C.extractXmlTexts(zip), /展開に失敗しました/);
+});

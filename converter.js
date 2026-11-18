@@ -17,7 +17,6 @@
   /**
    * 悪意のある・壊れたファイルでブラウザが固まらないための上限。
    * 生成ツールのZIPは数KB、キャラクターXMLは10KB前後なので十分に余裕がある。
-   * udon_ccfolia.py の同名の定数と揃えること。
    */
   const LIMITS = Object.freeze({
     maxInputBytes: 20 * 1024 * 1024, // 読み込むファイル1つの大きさ

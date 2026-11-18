@@ -1,4 +1,5 @@
 # 依存関係とアクションの定期更新を月1回、種類ごとに1つのPRにまとめて提案する。
+# requirements.txt（streamlit）は移転案内ページのためだけに残しているので、定期更新はしない（脆弱性の修正は下記のとおり届く）。
 # 脆弱性の修正はリポジトリ設定の「Dependabot security updates」で、見つかり次第すぐ PR が来る（この間隔や cooldown とは無関係）。
 version: 2
 updates:
@@ -15,12 +16,3 @@ updates:
     cooldown: { default-days: 7 }
     groups:
       npm: { patterns: ["*"] }
-  - package-ecosystem: pip
-    directory: /
-    schedule: { interval: monthly }
-    cooldown: { default-days: 7 }
-    # streamlit>=… のような下限指定は、新しい版がすでに範囲内なので書き換えない（下限を上げるだけのPRを出さない）。
-    # pytest==… のような固定は従来どおり更新する
-    versioning-strategy: increase-if-necessary
-    groups:
-      pip: { patterns: ["*"] }

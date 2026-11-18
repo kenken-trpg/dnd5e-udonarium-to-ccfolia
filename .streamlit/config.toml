@@ -1,8 +1,4 @@
-# Streamlit Community Cloud でもこのファイルが読まれる。
-[server]
-# 生成ツールのZIPは数KB。大きなファイルでサーバーのメモリを使い切らないようにする（udon_ccfolia.MAX_INPUT_BYTES と揃える）
-maxUploadSize = 20
-
+# Streamlit Community Cloud でもこのファイルが読まれる（streamlit_app.py は移転案内だけ）。
 [browser]
 # 利用統計を Streamlit に送らない
 gatherUsageStats = false
