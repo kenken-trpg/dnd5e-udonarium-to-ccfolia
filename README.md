@@ -81,7 +81,7 @@ npm run lint                     # ESLint
 | `tests/archive.test.mjs` | 一括保存ZIPを Python 標準の ZIP リーダーで独立に検証（CRC・UTF-8の名前）。ファイル名の安全化 |
 | `tests/csp.test.mjs` | `index.html`・`manual.html` の CSP に必須の指定があり、インラインスクリプトなどが無いこと |
 | `tests/e2e/browser.spec.mjs` | 実際のブラウザで操作する（読み込み・ドロップ・オプション・コピー・保存・ツールチップ・`file://`・配布ZIP・Trusted Types） |
-| `tests/e2e/results.spec.mjs` | 警告・一括保存・削除・進捗・中断と選び直し・期待JSONとの一致 |
+| `tests/e2e/results.spec.mjs` | 警告・一括保存（保存したZIPの中身も確かめる）・削除・進捗・中断と選び直し・期待JSONとの一致 |
 | `tests/e2e/a11y.spec.mjs` | アクセシビリティの自動チェック（axe-core、WCAG 2.1 AA）。主な画面の状態を、ライト／ダークの両方で（Chromium のみ） |
 
 期待JSON（`tests/fixtures/expected/`）を変えるときは、入力と変換仕様を確かめてから差分をレビューする。自動で上書きする更新コマンドはあえて用意していない。
@@ -128,8 +128,9 @@ npx playwright test --project=webkit --repeat-each=6
 必須チェックはジョブ名で登録しているので、ジョブ名（`Lint（ESLint）`・`単体テスト`・`E2E（ブラウザ版）`）は変えないこと。
 
 `.github/workflows/e2e-cross-browser.yml` は、ブラウザ版に関わるファイル（`index.html`・`app.js`・`style.css`・`converter.js`・E2Eテストなど）を変えた PR のときだけ、
-Firefox と WebKit で E2E を回す（Actions タブから手動でも実行できる）。この2つは OS のライブラリが足りないので apt で入れる。
-apt が止まったときのために、3分で打ち切って1回だけやり直す。
+Firefox と WebKit で E2E を回す（Actions タブから手動でも実行できる）。この2つは OS のライブラリ（GStreamer など）がランナーに無く、
+apt で入れると遅く止まることもあるので、ブラウザとライブラリが入った Playwright の公式コンテナ（`mcr.microsoft.com/playwright`）で動かす。
+コンテナの版は `package-lock.json` の `@playwright/test` から決めるので、Dependabot が Playwright を上げても手で直す必要はない。
 
 ### GitHub Pages
 
