@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<character>
+  <data name="character">
+    <data name="common"><data name="name">テスト &amp; &lt;冒険者&gt; / 特殊文字</data></data>
+    <data name="detail">
+      <data name="基本"><data name="プレイヤー">匿名PL</data><data name="レベル">1</data><data name="クラス">ファイター</data><data name="種族">ヒューマン</data></data>
+      <data name="能力"><data name="筋力修正">+2</data><data name="空欄">　</data><data name="重複">1</data><data name="重複">2</data><data name="イニシアチブ">-1</data></data>
+      <data name="リソース"><data name="HP" type="numberResource" currentValue="7">12</data><data name="一時的HP" type="numberResource" currentValue="3">3</data><data name="lv1" type="numberResource" currentValue=""></data></data>
+      <data name="特徴"><data name="背景" type="note">一行目 &amp; 特徴
+二行目 &lt;script&gt;alert(1)&lt;/script&gt;</data></data>
+      <data name="呪文"><data name="空の呪文名"/></data>
+    </data>
+  </data>
+  <chat-palette dicebot="DnD5e">AR{筋力修正} 【筋力】
+AT{未登録} 【未解決】
+:HP-1
+{constructor} &lt;img src=x onerror=alert(1)&gt;</chat-palette>
+</character>

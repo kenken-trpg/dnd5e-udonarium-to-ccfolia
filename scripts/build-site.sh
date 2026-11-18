@@ -6,13 +6,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 OUT="${1:-_site}"
-FILES=(index.html app.js converter.js style.css)
+FILES=(index.html app.js converter.js archive.js style.css)
 PKG=dnd5e-ccfolia
 
 rm -rf "$OUT"
 mkdir -p "$OUT/.pkg/$PKG"
 cp "${FILES[@]}" "$OUT/"
 cp "${FILES[@]}" "$OUT/.pkg/$PKG/"
+python3 scripts/build-manual.py "$OUT/manual.html"
+cp "$OUT/manual.html" "$OUT/.pkg/$PKG/"
 cp docs/offline-readme.txt "$OUT/.pkg/$PKG/README.txt"
 # -X: OS固有の属性を入れない
 (cd "$OUT/.pkg" && zip -q -r -X "../$PKG.zip" "$PKG")

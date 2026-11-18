@@ -1,0 +1,73 @@
+{
+  "kind": "character",
+  "data": {
+    "name": "テスト & <冒険者> / 特殊文字",
+    "memo": "PL: 匿名PL\nレベル1 / ファイター / ヒューマン",
+    "initiative": -1,
+    "externalUrl": "",
+    "status": [
+      {
+        "label": "HP",
+        "value": "7",
+        "max": "12"
+      },
+      {
+        "label": "一時的HP",
+        "value": "3",
+        "max": "3"
+      }
+    ],
+    "params": [
+      {
+        "label": "プレイヤー",
+        "value": "匿名PL"
+      },
+      {
+        "label": "レベル",
+        "value": "1"
+      },
+      {
+        "label": "クラス",
+        "value": "ファイター"
+      },
+      {
+        "label": "種族",
+        "value": "ヒューマン"
+      },
+      {
+        "label": "筋力修正",
+        "value": "+2"
+      },
+      {
+        "label": "空欄",
+        "value": ""
+      },
+      {
+        "label": "重複",
+        "value": "1"
+      },
+      {
+        "label": "重複",
+        "value": "2"
+      },
+      {
+        "label": "イニシアチブ",
+        "value": "-1"
+      }
+    ],
+    "iconUrl": null,
+    "faces": [],
+    "x": 0,
+    "y": 0,
+    "angle": 0,
+    "width": 4,
+    "height": 4,
+    "active": true,
+    "secret": false,
+    "invisible": false,
+    "hideStatus": false,
+    "color": "#888888",
+    "commands": "AR{筋力修正} 【筋力】\nAT{未登録} 【未解決】\n:HP-1\n{constructor} <img src=x onerror=alert(1)>",
+    "owner": null
+  }
+}

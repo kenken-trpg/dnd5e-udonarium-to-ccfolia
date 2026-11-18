@@ -38,5 +38,26 @@ for (const colorScheme of ['light', 'dark']) {
       await expect(page.getByRole('tooltip').filter({ hasText: '【見出し】' })).toBeVisible();
       expect(await violations(page)).toEqual([]);
     });
+
+    test('未解決参照・重複の警告とパレットの強調表示', async ({ page }) => {
+      await page.locator('#file-input').setInputFiles(fixturePath('edge-cases.xml'));
+      await page.getByRole('button', { name: '2行目: {未登録}' }).click();
+      expect(await violations(page)).toEqual([]);
+    });
+
+    test('読み込みの進捗とキャンセル操作', async ({ page }) => {
+      await page.evaluate(() => {
+        const read = File.prototype.arrayBuffer;
+        File.prototype.arrayBuffer = async function () {
+          await new Promise(resolve => { window.releaseRead = resolve; });
+          return read.call(this);
+        };
+      });
+      await page.locator('#file-input').setInputFiles(fixturePath('attacks.xml'));
+      await expect.poll(() => page.evaluate(() => typeof window.releaseRead)).toBe('function');
+      expect(await violations(page)).toEqual([]);
+      await page.locator('#cancel-load').click();
+      await page.evaluate(() => window.releaseRead());
+    });
   });
 }

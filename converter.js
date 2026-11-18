@@ -200,7 +200,7 @@
         const label = c.getAttribute('name') || '';
         const type = c.getAttribute('type') || '';
         const children = dataChildren(c);
-        if (children.length) { stack.push(...children.reverse()); continue; }
+        if (children.length) { for (const child of children.reverse()) stack.push(child); continue; }
         const text = c.textContent || '';
         if (type === 'numberResource') {
           const max = cleanText(text);
@@ -345,6 +345,20 @@
     return [...missing];
   }
 
+  /** 元の値を変更せず、貼り付け前に確認する項目を返す。行番号は1始まり。 */
+  function inspectConversion(ccfolia) {
+    const d = ccfolia.data;
+    const missing = new Set(unresolvedReferences(ccfolia));
+    const references = [];
+    d.commands.split('\n').forEach((line, index) => {
+      const labels = [...new Set([...line.matchAll(REF)].map(m => m[1]).filter(label => missing.has(label)))];
+      if (labels.length) references.push({ line: index + 1, labels, text: line });
+    });
+    const counts = new Map();
+    for (const field of [...d.status, ...d.params]) counts.set(field.label, (counts.get(field.label) || 0) + 1);
+    return { references, duplicates: [...counts].filter(([, count]) => count > 1).map(([label, count]) => ({ label, count })) };
+  }
+
   return {
     DEFAULT_OPTIONS,
     LIMITS,
@@ -353,5 +367,6 @@
     parseUdonariumXml,
     toCcfolia,
     unresolvedReferences,
+    inspectConversion,
   };
 });

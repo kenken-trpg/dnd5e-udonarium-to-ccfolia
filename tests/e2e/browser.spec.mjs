@@ -179,6 +179,7 @@ test('ローカルファイルとして開いても動く', async ({ page }) => 
   await openApp(page, pathToFileURL(fixturePath('../../index.html')).href);
   await upload(page, 'sorcerer.zip');
   await expect(card(page, 'テスト・ソーサラー')).toHaveCount(1);
+
 });
 
 test.describe('出力オプションの記憶', () => {
@@ -222,11 +223,17 @@ test('配布用ZIPを展開してそのまま使える', async ({ page, browserN
   execFileSync('bash', [fileURLToPath(new URL('../../scripts/build-site.sh', import.meta.url)), out]);
   execFileSync('unzip', ['-q', `${out}/dnd5e-ccfolia.zip`, '-d', `${out}/extracted`]);
   const dir = `${out}/extracted/dnd5e-ccfolia`;
-  expect(readdirSync(dir).sort()).toEqual(['README.txt', 'app.js', 'converter.js', 'index.html', 'style.css']);
+  expect(readdirSync(dir).sort()).toEqual(['README.txt', 'app.js', 'archive.js', 'converter.js', 'index.html', 'manual.html', 'style.css']);
 
   await openApp(page, pathToFileURL(`${dir}/index.html`).href);
   await upload(page, 'sorcerer.zip');
   await expect(card(page, 'テスト・ソーサラー')).toHaveCount(1);
+  await page.goto(pathToFileURL(`${dir}/manual.html`).href);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('D&D5e ココフォリア変換 マニュアル');
+  expect(await page.locator('a[href^="#"]').evaluateAll(links => links
+    .map(link => link.getAttribute('href').slice(1)).filter(id => !document.getElementById(decodeURIComponent(id))))).toEqual([]);
+  await page.getByRole('link', { name: '変換ツールに戻る' }).first().click();
+  await expect(page.locator('html')).toHaveAttribute('data-ready', 'true');
 });
 
 test('選択数の上限を超えても直前の変換結果を保持する', async ({ page }) => {
