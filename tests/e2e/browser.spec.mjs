@@ -262,6 +262,16 @@ test.describe('出力オプションの記憶', () => {
   }
 });
 
+const VIDEO = 'https://www.youtube.com/watch?v=qQDg6C3P3Zo';
+
+test('動画マニュアルへのリンクが冒頭と画面下にあり、新しいタブで開く', async ({ page }) => {
+  for (const link of [page.getByRole('link', { name: '動画マニュアルを見る' }), page.locator('footer').getByRole('link', { name: '動画マニュアル' })]) {
+    await expect(link).toHaveAttribute('href', VIDEO);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener');
+  }
+});
+
 test('公開ページには手元で使うZIPの案内があり、ZIPから開いたときは出さない', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'ZIPをダウンロード' })).toHaveAttribute('href', 'dnd5e-ccfolia.zip');
   await openApp(page, pathToFileURL(fixturePath('../../index.html')).href);
@@ -282,11 +292,17 @@ test('配布用ZIPを展開してそのまま使える', async ({ page, browserN
   await expect(card(page, 'テスト・ソーサラー')).toHaveCount(1);
   await page.goto(pathToFileURL(`${dir}/manual.html`).href);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('D&D5e ココフォリア変換 マニュアル');
-  await expect(page.getByRole('img')).toHaveCount(3);
+  // docs/manual.md の画像（1行に1つ）がすべて表示される
+  const images = readFileSync(new URL('../../docs/manual.md', import.meta.url), 'utf8').match(/^!\[/gm).length;
+  expect(images).toBeGreaterThanOrEqual(10);
+  await expect(page.getByRole('img')).toHaveCount(images);
   for (const image of await page.getByRole('img').all()) {
     await image.scrollIntoViewIfNeeded();
     await expect.poll(() => image.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
   }
+  await expect(page.getByRole('link', { name: '動画マニュアル（YouTube・約1分30秒）' })).toHaveAttribute('href', VIDEO);
+  // 画像を挟んで続く手順は番号を引き継ぐ（「3. ココフォリアに貼り付ける」の3番目の手順）
+  await expect(page.locator('ol[start="3"]').first()).toContainText('ダイスボット');
   // 目次は本文の h2 見出しと1対1で対応する
   await expect(page.getByRole('navigation', { name: '目次' }).getByRole('link')).toHaveCount(await page.locator('main > h2').count());
   expect(await page.locator('a[href^="#"]').evaluateAll(links => links

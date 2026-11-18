@@ -3,6 +3,7 @@
 
 使い方: python3 scripts/build-manual.py 出力先.html
 対応する記法は docs/manual.md で使っている見出し・段落・リスト・表・リンク・画像・コード・太字だけ。
+画像は1行に1つだけ書き、リストの外（前後に空行）に置く。番号付きリストを画像の後に「2.」から続けると、番号を引き継ぐ。
 h2 見出しから目次を作り、h1 の直後に置く。
 """
 import html
@@ -25,7 +26,7 @@ def inline(text):
                 raise ValueError(f"Unsupported manual link: {url}")
             parts.append(f'<a href="{html.escape(url, quote=True)}">{inline(label)}</a>')
         else:
-            parts.append(f"<strong>{html.escape(bold)}</strong>")
+            parts.append(f"<strong>{inline(bold)}</strong>")
         end = match.end()
     parts.append(html.escape(text[end:]))
     return "".join(parts)
@@ -45,7 +46,9 @@ def render(source):
     def render_list(index, indent):
         first = list_item.match(lines[index])
         kind = "ul" if first[2] in ("-", "*") else "ol"
-        result = [f"<{kind}>"]
+        # 画像を挟んで手順を続けるとき（「2.」から始まる番号付きリスト）は、番号を引き継ぐ
+        start = int(first[2][:-1]) if kind == "ol" else 1
+        result = [f'<ol start="{start}">' if start != 1 else f"<{kind}>"]
         while index < len(lines):
             match = list_item.match(lines[index])
             if not match or len(match[1]) != indent:

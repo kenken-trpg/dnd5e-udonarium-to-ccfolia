@@ -16,10 +16,19 @@
 | `docs/performance.md` / `docs/benchmarks/` | 性能計測の方法と結果 |
 | `scripts/build-site.sh` | GitHub Pages の配信物（アプリ・HTMLマニュアルと、手元で使うためのZIP）を作る |
 | `scripts/build-manual.py` | `docs/manual.md` を目次付きの静的HTMLにする（このマニュアルで使う記法だけに対応） |
+| `scripts/manual-screenshots.mjs` | マニュアルのスクリーンショット（`docs/images/`）を作る（下記） |
 | `scripts/benchmark.mjs` | 実ブラウザの性能計測 |
 | `streamlit_app.py` / `requirements.txt` / `.streamlit/` | 終了した Streamlit版の公開URLで、ブラウザ版へ案内するだけのページ（下記） |
 
 配布ビルドには Python 3・bash・zip を使う。`scripts/build-site.sh` で作った `_site/index.html` を開くと、マニュアルも含めて公開ページと同じものを手元で確かめられる。
+
+#### マニュアルのスクリーンショット
+
+画面を変えたら `node scripts/manual-screenshots.mjs` で `docs/images/` の変換ページの画像を撮り直す（Playwright の Chromium を使う。外部には通信しない）。
+生成ツールとココフォリアの画像（`generator.png`・`ccf-*.png`）は、撮影済みの画面（1280x720・倍率1.5）を
+`--external <フォルダ>` で渡したときだけ切り出し直し、操作する場所を赤枠で囲む。必要なファイルと撮り方はスクリプト冒頭のコメントにある。
+ほかの人のキャラクターやルームが写った画面は使わない。
+マニュアルの画像は1行に1つ、リストの外に置く（`scripts/build-manual.py` の対応範囲）。E2Eテストが、`docs/manual.md` の画像がすべて配布ZIPの `manual.html` で表示されることを確かめる。
 
 ### Streamlit版について
 
