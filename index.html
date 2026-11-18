@@ -33,10 +33,13 @@
   </section>
 
   <section class="card" aria-labelledby="in-h">
-    <h2 id="in-h" class="has-tip">2. 読み込む
-      <button type="button" class="tip-btn" aria-label="読み込めるファイルについて">?</button>
-      <span class="tip" role="tooltip">生成ツールで保存したZIPか、その中のXMLを読み込めます。複数まとめて選べます。一度に<span data-limit="maxBatchFiles">50</span>ファイル・<span data-limit="maxBatchFiles">50</span>体、合計<span data-limit="maxInputBytes">20MB</span>まで。XMLは1つ<span data-limit="maxXmlBytes">5MB</span>、展開後も合計<span data-limit="maxTotalXmlBytes">20MB</span>まで。新しく読み込むと、前の結果は置き換わります。</span>
-    </h2>
+    <div class="heading-row">
+      <h2 id="in-h">2. 読み込む</h2>
+      <span class="has-tip">
+        <button type="button" class="tip-btn" aria-label="読み込めるファイルについて">?</button>
+        <span class="tip">生成ツールで保存したZIPか、その中のXMLを読み込めます。複数まとめて選べます。一度に<span data-limit="maxBatchFiles">50</span>ファイル・<span data-limit="maxBatchFiles">50</span>体、合計<span data-limit="maxInputBytes">20MB</span>まで。XMLは1つ<span data-limit="maxXmlBytes">5MB</span>、展開後も合計<span data-limit="maxTotalXmlBytes">20MB</span>まで。新しく読み込むと、前の結果は置き換わります。</span>
+      </span>
+    </div>
     <div id="drop" class="drop" tabindex="0" role="button">
       保存した <strong>ZIP</strong>（または中の <strong>XML</strong>）をここにドロップ、またはクリックして選択
     </div>
@@ -62,17 +65,17 @@
       <span class="has-tip">
         <label><input type="checkbox" id="opt-notes"> 背景・人格的特徴などをメモに入れる</label>
         <button type="button" class="tip-btn" aria-label="メモに入れる項目の説明">?</button>
-        <span class="tip" role="tooltip">背景・人格的特徴・尊ぶもの・関わり深いもの・弱味などを、【見出し】付きでメモの末尾に追加します。</span>
+        <span class="tip">背景・人格的特徴・尊ぶもの・関わり深いもの・弱味などを、【見出し】付きでメモの末尾に追加します。</span>
       </span>
       <span class="has-tip">
         <label><input type="checkbox" id="opt-expand"> パレットの {参照} を数値に置き換える</label>
         <button type="button" class="tip-btn" aria-label="参照の置き換えの説明">?</button>
-        <span class="tip" role="tooltip">{筋力修正} などを、変換した時点の数値に置き換えます。置き換えると、あとでココフォリアのパラメータを書き換えてもパレットは変わらなくなります。</span>
+        <span class="tip">{筋力修正} などを、変換した時点の数値に置き換えます。置き換えると、あとでココフォリアのパラメータを書き換えてもパレットは変わらなくなります。</span>
       </span>
       <span class="has-tip">
         <label>コマの色 <input type="color" id="opt-color" value="#888888"></label>
         <button type="button" class="tip-btn" aria-label="コマの色の説明">?</button>
-        <span class="tip" role="tooltip">ココフォリアのキャラクター設定の「色」に入ります。</span>
+        <span class="tip">ココフォリアのキャラクター設定の「色」に入ります。</span>
       </span>
     </div>
     <p class="hint">選んだオプションはこのブラウザに記憶され、次に開いたときも同じになります。</p>
@@ -83,12 +86,13 @@
     <p id="result-count" role="status"></p>
     <span class="has-tip">
       <button type="button" id="save-all" class="primary">全員分をZIPで保存</button>
-      <span class="tip" role="tooltip">表示中の全員分のJSONを1つのZIPにまとめて保存します（バックアップ用）。ココフォリアへは、展開したJSONの中身を1体ずつコピーして貼り付けます。読み込み中は使えません。</span>
+      <span class="tip" role="tooltip">表示中の全員分のJSONを1つのZIPにまとめて保存します。読み込み中は使えません。</span>
     </span>
     <span class="has-tip">
       <button type="button" id="clear-all" class="secondary">すべてクリア</button>
       <span class="tip" role="tooltip">読み込みを中断し、変換結果とファイルごとの処理結果を消します。出力オプションの記憶は消えません。</span>
     </span>
+    <p class="hint result-note">「全員分をZIPで保存」はバックアップ用です。ココフォリアへは、各キャラクターの「ココフォリア用にコピー」で1体ずつ貼り付けてください。</p>
   </div>
   <div id="results" role="region" aria-label="変換結果"></div>
 
@@ -116,9 +120,12 @@
     <p class="sub" data-f="sub"></p>
     <div class="warn hidden" data-f="warn"></div>
     <p class="hint" data-f="notice"></p>
-    <div class="has-tip">
-      <div class="chips" data-f="chips" tabindex="0" aria-label="変換内容の概要"></div>
-      <span class="tip" role="tooltip">HP・呪文スロットなどはステータス（現在値/最大値）に、能力値・技能などはパラメータになります。</span>
+    <div class="chips-row">
+      <div class="chips" data-f="chips" role="group" aria-label="変換内容の概要"></div>
+      <span class="has-tip">
+        <button type="button" class="tip-btn" aria-label="概要の見方">?</button>
+        <span class="tip">HP・呪文スロットなどはステータス（現在値/最大値）に、能力値・技能などはパラメータになります。</span>
+      </span>
     </div>
     <div class="actions">
       <span class="has-tip">

@@ -105,34 +105,38 @@ footer { color: var(--muted); font-size: .8rem; margin-top: 32px; }
 footer p { margin: 0 0 4px; }
 .opts-top { margin-top: 0; }
 
-/* ---- ツールチップヘルプ
- * .has-tip の中の最初のボタン等にマウスを乗せるか、キーボードでフォーカスすると .tip を表示する。
- * Esc で閉じる（app.js）。表示・非表示にアニメーションは付けない（E2Eの待ちを不要にするため）。
- * マウスで出したときは、説明の上にマウスを動かしても消えない（WCAG 1.4.13）。フォーカスだけで出しているときは
- * 説明がクリックを横取りしないよう pointer-events: none にする。 */
+/* ---- 説明（ツールチップヘルプ）
+ * .has-tip に .tip-open が付いている間だけ .tip を表示する。開閉は app.js が決める
+ * （「?」は押して開閉、ほかのボタンはマウスを少し乗せ続けたときとキーボードのフォーカスで表示。Esc で閉じる）。
+ * 表示・非表示にアニメーションは付けない（E2Eの待ちを不要にするため）。
+ * キーボードのフォーカスで出した説明（.tip-keyboard）は、下にあるもののクリックを横取りしないよう pointer-events: none にする。 */
 .has-tip { position: relative; display: inline-flex; align-items: center; gap: 6px; }
-h2.has-tip, div.has-tip { display: flex; }
-div.has-tip { margin-bottom: 14px; }
-div.has-tip > .chips { margin-bottom: 0; }
+.heading-row { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; }
+.heading-row h2 { margin: 0; }
+.chips-row { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 14px; }
+.chips-row > .chips { margin-bottom: 0; }
+.chips-row > .has-tip { margin-top: 4px; }
+.result-note { flex-basis: 100%; margin: 0; }
 .tip {
   position: absolute; z-index: 10; top: calc(100% + 6px); left: 0;
   width: max-content; max-width: min(300px, calc(100vw - 32px));
   padding: 8px 10px; border-radius: 8px; background: var(--text); color: var(--bg);
   font-size: .8rem; font-weight: normal; line-height: 1.6; text-align: left; white-space: normal;
-  box-shadow: 0 4px 14px rgb(0 0 0 / .18); visibility: hidden; display: none; pointer-events: none;
+  box-shadow: 0 4px 14px rgb(0 0 0 / .18); display: none;
 }
-.has-tip:hover > .tip, .has-tip:focus-within > .tip { visibility: visible; display: block; }
-.has-tip:hover > .tip { pointer-events: auto; }
+.has-tip.tip-open > .tip { display: block; }
+.has-tip.tip-keyboard > .tip { pointer-events: none; }
 /* 対象と説明の間の隙間でマウスが外れないよう、隙間を埋める見えない帯 */
 .tip::before { content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 8px; }
 .has-tip.tip-above > .tip { top: auto; bottom: calc(100% + 6px); }
 .has-tip.tip-above > .tip::before { top: auto; bottom: -8px; }
-.has-tip.tip-off > .tip { visibility: hidden; display: none; }
 .tip-btn {
-  font: 600 .72rem/1 inherit; width: 18px; height: 18px; padding: 0; border-radius: 50%;
-  border: 1px solid var(--muted); background: transparent; color: var(--muted); cursor: help;
+  position: relative; font: 600 .72rem/1 inherit; width: 18px; height: 18px; padding: 0; border-radius: 50%;
+  border: 1px solid var(--muted); background: transparent; color: var(--muted); cursor: pointer;
 }
-.tip-btn:hover, .tip-btn:focus-visible { border-color: var(--accent); color: var(--accent); }
+/* 指で押しやすいよう、見た目より広い範囲（30px四方）で押せるようにする */
+.tip-btn::after { content: ""; position: absolute; inset: -6px; }
+.tip-btn:hover, .tip-btn:focus-visible, .tip-btn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
 .tip-btn:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .manual img { display: block; max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: var(--radius); }

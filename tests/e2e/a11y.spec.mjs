@@ -33,9 +33,13 @@ for (const colorScheme of ['light', 'dark']) {
       expect(await violations(page)).toEqual([]);
     });
 
-    test('ツールチップを表示した状態', async ({ page }) => {
-      await page.locator('#opt-notes').focus();
-      await expect(page.getByRole('tooltip').filter({ hasText: '【見出し】' })).toBeVisible();
+    test('説明を開いた状態（「?」とボタンの説明）', async ({ page }) => {
+      await page.getByRole('button', { name: 'メモに入れる項目の説明' }).click();
+      await expect(page.getByText('【見出し】付きでメモの末尾に追加')).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await upload(page, 'sorcerer.zip');
+      await page.getByRole('button', { name: 'ココフォリア用にコピー' }).hover();
+      await expect(page.getByRole('tooltip').filter({ hasText: 'Ctrl+V' })).toBeVisible();
       expect(await violations(page)).toEqual([]);
     });
 

@@ -68,11 +68,12 @@ await open();
 await shot('import', section('in-h'));
 // 出力オプション
 await shot('options', section('opt-h'));
-// ツールチップ（? にマウスを乗せたところ）
-await page.getByRole('button', { name: 'メモに入れる項目の説明' }).hover();
+// 説明（? を押したところ）
+await page.getByRole('button', { name: 'メモに入れる項目の説明' }).click();
 await section('opt-h').locator('.tip').first().waitFor({ state: 'visible' });
-await shot('tooltip', [section('opt-h'), section('opt-h').locator('.tip').first()]);
 await page.mouse.move(0, 0);
+await shot('tooltip', [section('opt-h'), section('opt-h').locator('.tip').first()]);
+await page.keyboard.press('Escape');
 
 // 1体の変換結果
 await load('sorcerer.zip');
@@ -84,8 +85,6 @@ await shot('palette', card('テスト・ソーサラー'), { maxHeight: 560 });
 await card('テスト・ソーサラー').getByText('チャットパレット', { exact: true }).click();
 await card('テスト・ソーサラー').getByRole('button', { name: 'ココフォリア用にコピー' }).click();
 await page.getByRole('button', { name: 'コピーしました ✓' }).waitFor();
-await page.mouse.move(0, 0); // ボタンの説明を閉じる
-await page.getByRole('button', { name: 'コピーしました ✓' }).blur();
 await shot('copied', card('テスト・ソーサラー').locator('.actions'), { pad: 8 });
 
 // 複数ファイル: ファイルごとの処理結果と、全員分の操作

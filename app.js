@@ -29,38 +29,84 @@
 
   const setMsg = (text, kind = '') => { msg.textContent = text; msg.className = 'msg' + (kind ? ' ' + kind : ''); };
 
-  // ---- ツールチップ
+  // ---- 説明（ツールチップヘルプ）
+  // .has-tip の中身によって2種類に分かれる。どちらも開いている説明は同時に1つだけ。
+  // - 「?」ボタン（.tip-btn）: 押すと開き、もう一度押す・外側を押す・フォーカスを外す・Esc で閉じる（トグルチップ）。
+  //   開閉は aria-expanded / aria-controls で伝える。同じ .has-tip 内の入力欄には aria-describedby で説明を結び付ける。
+  // - ほかのボタンの補足（role="tooltip"）: マウスのある端末で TIP_DELAY ミリ秒乗せ続けたときと、
+  //   キーボードでフォーカスしたとき（:focus-visible）だけ出す。押すと閉じる。マウスで説明の上に移っても消えない（WCAG 1.4.13）。
+  //   タッチ端末では出さない（指を離したあともホバー扱いが残り、説明が画面をふさぐため）。説明は画面に出ていなくても読み上げられる。
+  const TIP_DELAY = 400;
+  const canHover = matchMedia('(hover: hover) and (pointer: fine)');
+  const tipTimers = new WeakMap();
   let tipSeq = 0;
-  /** root 内の .has-tip に id と aria-describedby を付ける（テンプレートを複製したあとにも呼ぶ） */
+
+  /** 画面からはみ出さないよう、表示のたびに位置を調整する。右端を越えるなら左へずらし、下に収まらず上なら収まるときは上に出す */
+  function placeTip(wrap) {
+    const tip = wrap.querySelector(':scope > .tip');
+    wrap.classList.remove('tip-above');
+    tip.style.left = '';
+    const box = tip.getBoundingClientRect();
+    const over = box.right - (document.documentElement.clientWidth - 8);
+    if (over > 0) tip.style.left = `${-over}px`;
+    const above = wrap.getBoundingClientRect().top - box.height - 6;
+    if (box.bottom > document.documentElement.clientHeight - 8 && above >= 8) wrap.classList.add('tip-above');
+  }
+  function hideTip(wrap) {
+    clearTimeout(tipTimers.get(wrap));
+    wrap.classList.remove('tip-open', 'tip-keyboard');
+    wrap.querySelector(':scope > .tip-btn')?.setAttribute('aria-expanded', 'false');
+  }
+  function hideAllTips(except) {
+    for (const wrap of document.querySelectorAll('.has-tip.tip-open')) if (wrap !== except) hideTip(wrap);
+  }
+  /** keyboard: キーボードのフォーカスで出したとき。説明が下にあるもののクリックを横取りしないようにする */
+  function showTip(wrap, keyboard = false) {
+    hideAllTips(wrap);
+    clearTimeout(tipTimers.get(wrap));
+    wrap.classList.add('tip-open');
+    wrap.classList.toggle('tip-keyboard', keyboard);
+    wrap.querySelector(':scope > .tip-btn')?.setAttribute('aria-expanded', 'true');
+    placeTip(wrap);
+  }
+
+  /** root 内の .has-tip を使えるようにする（テンプレートを複製したあとにも呼ぶ） */
   function wireTips(root) {
     for (const wrap of root.querySelectorAll('.has-tip')) {
       const tip = wrap.querySelector(':scope > .tip');
       if (!tip || tip.id) continue;
       tip.id = `tip-${++tipSeq}`;
-      for (const el of wrap.querySelectorAll('button, input, [tabindex]')) el.setAttribute('aria-describedby', tip.id);
-      // 画面からはみ出さないよう、表示のたびに位置を調整する。
-      // 右端を越えるなら左へずらし、下に収まらず上なら収まるときは上に出す
-      const place = () => {
-        wrap.classList.remove('tip-off', 'tip-above');
-        tip.style.left = '';
-        const box = tip.getBoundingClientRect();
-        const over = box.right - (document.documentElement.clientWidth - 8);
-        if (over > 0) tip.style.left = `${-over}px`;
-        const above = wrap.getBoundingClientRect().top - box.height - 6;
-        if (box.bottom > document.documentElement.clientHeight - 8 && above >= 8) wrap.classList.add('tip-above');
-      };
-      wrap.addEventListener('mouseenter', place);
-      wrap.addEventListener('focusin', place);
-      wrap.querySelector(':scope > .tip-btn')?.addEventListener('click', () => {
-        wrap.querySelector(':scope > .tip-btn').focus();
-        place();
+      const toggle = wrap.querySelector(':scope > .tip-btn');
+      if (toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-controls', tip.id);
+        for (const input of wrap.querySelectorAll('input')) input.setAttribute('aria-describedby', tip.id);
+        toggle.addEventListener('click', () => (wrap.classList.contains('tip-open') ? hideTip(wrap) : showTip(wrap)));
+        wrap.addEventListener('focusout', e => { if (e.relatedTarget && !wrap.contains(e.relatedTarget)) hideTip(wrap); });
+        continue;
+      }
+      const target = wrap.querySelector('button');
+      target.setAttribute('aria-describedby', tip.id);
+      wrap.addEventListener('mouseenter', () => {
+        if (!canHover.matches || wrap.classList.contains('tip-open')) return;
+        clearTimeout(tipTimers.get(wrap));
+        tipTimers.set(wrap, setTimeout(() => showTip(wrap), TIP_DELAY));
       });
+      wrap.addEventListener('mouseleave', () => { if (!target.matches(':focus-visible')) hideTip(wrap); });
+      target.addEventListener('focus', () => { if (target.matches(':focus-visible')) showTip(wrap, true); });
+      target.addEventListener('blur', () => { if (!wrap.matches(':hover')) hideTip(wrap); });
+      // 押したら閉じる（押したあとも説明が残って画面をふさがないように）。次に出すのはマウスを乗せ直したとき
+      target.addEventListener('pointerdown', () => hideTip(wrap));
     }
   }
-  // Esc で開いているツールチップを閉じる（次にマウスを乗せる・フォーカスするまで）
+  // 「?」の説明は外側を押すと閉じる。click ではなく pointerdown で見る
+  // （WebKit のタッチ操作では、見出しや余白のような押せない場所をタップしても click が起きないため）
+  document.addEventListener('pointerdown', e => {
+    for (const wrap of document.querySelectorAll('.has-tip.tip-open')) if (!wrap.contains(e.target)) hideTip(wrap);
+  });
+  // Esc で開いている説明を閉じる（次にマウスを乗せる・フォーカスする・「?」を押すまで）
   document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
-    for (const wrap of document.querySelectorAll('.has-tip:hover, .has-tip:focus-within')) wrap.classList.add('tip-off');
+    if (e.key === 'Escape') hideAllTips();
   });
 
   // 説明文中の上限を converter.js の値で書き換える（文言と実際の上限がずれないように）
