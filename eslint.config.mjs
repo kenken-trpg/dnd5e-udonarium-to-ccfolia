@@ -16,7 +16,7 @@ export default [
   js.configs.recommended,
   {
     // ブラウザで <script> として読むファイル。converter.js は Node からも require する
-    files: ['app.js', 'converter.js'],
+    files: ['app.js', 'converter.js', 'archive.js'],
     languageOptions: {
       sourceType: 'script',
       globals: { ...globals.browser, module: 'readonly' },

@@ -42,10 +42,12 @@
 | ファイル | 役割 |
 |---|---|
 | `index.html` / `style.css` / `app.js` | UI（画面・見た目・操作） |
+| `archive.js` | 一括保存用のUTF-8 ZIP生成・ファイル名の安全化 |
+| `scripts/benchmark.mjs` | 実ブラウザの性能計測 |
 | `converter.js` | 変換ロジック（ブラウザ・Node 共用） |
 | `tests/` | テストと、生成ツールが実際に出力したサンプル（`fixtures/`） |
 | `docs/manual.md` | 利用者向けマニュアル |
-| `scripts/build-site.sh` | GitHub Pages の配信物（4ファイルと、手元で使うためのZIP）を作る |
+| `scripts/build-site.sh` | GitHub Pages の配信物（アプリ・HTMLマニュアルと、手元で使うためのZIP）を作る |
 | `docs/offline-readme.txt` | ZIPに入れる説明書（`README.txt`） |
 | `streamlit_app.py` / `requirements.txt` / `.streamlit/` | 終了した Streamlit版の公開URLで、ブラウザ版へ案内するだけのページ（下記） |
 
@@ -70,6 +72,9 @@ npm run lint                     # ESLint
 
 | テスト | 内容 |
 |---|---|
+| `tests/archive.test.mjs` | ZIPの標準リーダー互換性・CRC・ファイル名の安全性 |
+| `tests/compatibility.test.mjs` | 期待JSONとの比較・特殊な入力の検証 |
+| `tests/e2e/results.spec.mjs` | 警告・ZIP保存・削除・進捗・中断と選び直し |
 | `tests/convert.test.mjs` | `converter.js` の単体テスト（安全対策を含む） |
 | `tests/e2e/browser.spec.mjs` | ブラウザ版を実際のブラウザで操作する（読み込み・ドロップ・オプション・コピー・保存・ツールチップ・`file://`） |
 | `tests/e2e/a11y.spec.mjs` | アクセシビリティの自動チェック（axe-core、WCAG 2.1 AA）。初期画面・変換結果・ツールチップ表示中を、ライト／ダークの両方で |
@@ -103,7 +108,7 @@ Firefox と WebKit で E2E を回す（Actions タブから手動でも実行で
 
 ### GitHub Pages
 
-`.github/workflows/pages.yml` が `scripts/build-site.sh` で `index.html`・`app.js`・`converter.js`・`style.css` と
+`.github/workflows/pages.yml` が `scripts/build-site.sh` で `index.html`・`app.js`・`converter.js`・`archive.js`・`style.css`・`manual.html` と
 手元で使うためのZIP（`dnd5e-ccfolia.zip`）を作って配信し、これらが main で変わるたびに自動で更新される（Actions タブの「Deploy to GitHub Pages」→ Run workflow で手動更新も可）。
 
 フォークして自分で公開する場合は、**Settings → Pages → Build and deployment → Source** で「**GitHub Actions**」を選んでから上記ワークフローを実行する。
@@ -134,3 +139,26 @@ WebKit は1ワーカーでテストを直列に実行し、macOSで複数ウィ�
 コピーのE2Eはブラウザ内で Clipboard API を差し替え、OSの共有クリップボードや権限設定による競合を防ぎます。
 実際のクリップボードへの貼り付けは、公開ページとダウンロード版で手動確認してください。
 安定性の反復確認: `npx playwright test --project=chromium --repeat-each=5`。
+
+### 結果の確認・整理
+
+ファイルごとの進捗、成功・失敗・一部成功を表示し、読み込みを中断できます。変換済みの結果は残します。
+未解決参照は行番号からパレットの該当行を確認でき、ステータス・パラメータの同名も警告します。
+各結果の削除、全結果のクリア、表示中の全キャラクターのJSONをZIPで保存できます。
+ZIP生成は `archive.js` の無圧縮UTF-8 ZIPで、追加のランタイム依存関係はありません。
+
+配布ビルドはPython 3・bash・zipを使います。`scripts/build-manual.py` が `docs/manual.md` の見出し・リスト・表・リンクをHTMLにし、公開ページと配布ZIPの両方へ同梱します。
+これはこのマニュアル向けの変換器で、任意のMarkdown構文すべてを扱うものではありません。
+ローカルでマニュアルも確認する場合は `scripts/build-site.sh` で作った `_site/index.html` を開いてください。
+
+### 互換性と性能計測
+
+`tests/fixtures/expected/` に5種類の入力の期待JSONを保存し、既定・参照展開とメモありの2設定で比較します。
+特殊文字・空欄・一時的HP・未使用スロット・重複名・未解決参照も検査します。ZIPのCRCとUTF-8はPython標準のZIPリーダーで独立に検証します。
+期待JSONを変更する際は、入力と変換仕様を確認してから差分をレビューしてください。自動で上書きする更新コマンドは設けていません。
+
+`npm run benchmark` で実ブラウザの1・10・50体を、通常のXMLとパレットを256KiB増やしたXMLで計測できます。事前に `npx playwright install --only-shell chromium` を実行してください。
+結果は `.local-artifacts/benchmark/latest.json` に、環境・入力ハッシュ・各回の測定値・中央値を保存します。出力先は `npm run benchmark -- /tmp/benchmark.json` のように指定できます。
+XML解析・変換・DOM更新を分け、ファイル選択から2描画フレーム後までの総時間も記録します。総時間は自動操作や読み込み、イベント待機を含みます。
+詳細と初回の測定結果は `docs/performance.md` を参照してください。
+E2Eとベンチマークはブラウザ操作が競合しないよう順番に実行してください。速度は環境に依存するので、CIで固定の時間閾値による合否判定はしません。

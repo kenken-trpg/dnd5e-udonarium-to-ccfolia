@@ -11,6 +11,7 @@ const SITE = {
   '/': ['index.html', 'text/html'],
   '/index.html': ['index.html', 'text/html'],
   '/app.js': ['app.js', 'text/javascript'],
+  '/archive.js': ['archive.js', 'text/javascript'],
   '/converter.js': ['converter.js', 'text/javascript'],
   '/style.css': ['style.css', 'text/css'],
 };

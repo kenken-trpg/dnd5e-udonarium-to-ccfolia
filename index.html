@@ -38,6 +38,15 @@
     </div>
     <input id="file-input" type="file" accept=".zip,.xml,application/zip,text/xml" multiple class="hidden">
     <p id="msg" class="msg" role="status" aria-live="polite"></p>
+    <div id="loading" hidden>
+      <label for="load-progress" id="load-label">読み込みの進捗</label>
+      <progress id="load-progress" value="0" max="1"></progress>
+      <button type="button" id="cancel-load" class="secondary">読み込みをキャンセル</button>
+    </div>
+    <details id="file-report" hidden open>
+      <summary>ファイルごとの処理結果</summary>
+      <ol id="file-status" aria-label="ファイルごとの処理結果"></ol>
+    </details>
   </section>
 
   <section class="card" aria-labelledby="opt-h">
@@ -63,7 +72,12 @@
     <p class="hint">ココフォリアはパレット中の <code>{筋力修正}</code> などをパラメータの値に置き換えるので、通常は置き換え不要です。</p>
   </section>
 
-  <div id="results"></div>
+  <div id="result-tools" class="actions" hidden>
+    <p id="result-count" role="status"></p>
+    <button type="button" id="save-all" class="primary">全員分をZIPで保存</button>
+    <button type="button" id="clear-all" class="secondary">すべてクリア</button>
+  </div>
+  <div id="results" role="region" aria-label="変換結果"></div>
 
   <section class="card" aria-labelledby="how-h">
     <h2 id="how-h">ココフォリアへの貼り付け方</h2>
@@ -78,7 +92,7 @@
   <footer>
     <p>ソースコード: <a href="https://github.com/kenken-trpg/dnd5e-udonarium-to-ccfolia" target="_blank" rel="noopener">GitHub</a></p>
     <p data-online-only>手元で使う: <a href="dnd5e-ccfolia.zip" download>ZIPをダウンロード</a>（展開した index.html をダブルクリックで開けます。インターネットにつながっていなくても使えます）</p>
-    <p>詳しい使い方とよくある質問: <a href="https://github.com/kenken-trpg/dnd5e-udonarium-to-ccfolia/blob/main/docs/manual.md" target="_blank" rel="noopener">マニュアル</a></p>
+    <p>詳しい使い方とよくある質問: <a href="manual.html" target="_blank" rel="noopener">マニュアル</a>（ダウンロード版でも読めます）</p>
     <p>元データ: D&amp;D総合コミュニティ「D&amp;D5E キャラクターデータベース」／ コマ生成: うにバター氏「D&amp;D5e ユドナリウムPCコマ生成ツール」</p>
   </footer>
 </main>
@@ -87,7 +101,8 @@
   <article class="card result">
     <h3 data-f="name"></h3>
     <p class="sub" data-f="sub"></p>
-    <p class="warn hidden" data-f="warn"></p>
+    <div class="warn hidden" data-f="warn"></div>
+    <p class="hint" data-f="notice"></p>
     <div class="has-tip">
       <div class="chips" data-f="chips" tabindex="0" aria-label="変換内容の概要"></div>
       <span class="tip" role="tooltip">HP・呪文スロットなどはステータス（現在値/最大値）に、能力値・技能などはパラメータになります。</span>
@@ -97,6 +112,7 @@
         <button type="button" class="primary" data-a="copy">ココフォリア用にコピー</button>
         <span class="tip" role="tooltip">クリップボードにコピーします。ココフォリアのルームで盤面をクリックしてから Ctrl+V（Mac は ⌘+V）で貼り付けると、コマができます。</span>
       </span>
+      <button type="button" class="secondary" data-a="remove">この結果を削除</button>
       <span class="has-tip">
         <button type="button" class="secondary" data-a="save">JSONを保存</button>
         <span class="tip" role="tooltip">変換結果をJSONファイルとして保存します。バックアップや、あとで貼り付けたいとき用です。</span>
@@ -109,6 +125,7 @@
 </template>
 
 <script src="converter.js"></script>
+<script src="archive.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

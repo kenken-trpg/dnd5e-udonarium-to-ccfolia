@@ -5,6 +5,7 @@
 (() => {
   'use strict';
   const C = window.UdonCcfolia;
+  const A = window.UdonArchive;
   const $ = id => document.getElementById(id);
   const msg = $('msg');
   const results = $('results');
@@ -12,6 +13,18 @@
   let entries = [];
   // 読み込み中に次のファイルが来たら、古い読み込みの結果は捨てる
   let loadGeneration = 0;
+  let fileRows = [];
+  const metrics = ['parse', 'convert', 'display'];
+  function clearMetrics() { metrics.forEach(name => performance.clearMeasures(`udon:${name}`)); }
+  function timed(name, action) {
+    const start = performance.now();
+    try { return action(); } finally { performance.measure(`udon:${name}`, { start, end: performance.now() }); }
+  }
+  function updateTools() {
+    $('result-tools').hidden = !entries.length && $('file-report').hidden;
+    $('result-count').textContent = `変換結果 ${entries.length}体`;
+    $('save-all').disabled = !entries.length || !$('loading').hidden;
+  }
 
   const setMsg = (text, kind = '') => { msg.textContent = text; msg.className = 'msg' + (kind ? ' ' + kind : ''); };
 
@@ -83,6 +96,7 @@
     requestAnimationFrame(() => {
       renderQueued = false;
       const options = outputOptions();
+      clearMetrics();
       entries.forEach(entry => render(entry, options));
     });
   }
@@ -94,7 +108,8 @@
   const chip = text => Object.assign(document.createElement('span'), { className: 'chip', textContent: text });
 
   function render(entry, options = outputOptions()) {
-    const out = C.toCcfolia(entry.parsed, options);
+    const out = timed('convert', () => C.toCcfolia(entry.parsed, options));
+    const displayStart = performance.now();
     entry.out = out;
     const f = name => entry.fields.get(name);
     const d = out.data;
@@ -112,33 +127,79 @@
       `パラメータ ${d.params.length}件`,
     ].filter(Boolean).map(chip));
 
-    const missing = C.unresolvedReferences(out);
-    f('warn').classList.toggle('hidden', !missing.length);
-    f('warn').textContent = missing.length
-      ? `パレット中の参照がパラメータに見つかりません: ${missing.map(m => `{${m}}`).join(' ')}　— ココフォリアではこの部分が数値に置き換わりません。`
-      : '';
-
+    const checks = C.inspectConversion(out);
+    const warn = f('warn');
+    warn.replaceChildren();
+    warn.classList.toggle('hidden', !checks.references.length && !checks.duplicates.length);
+    if (checks.references.length) {
+      warn.append(Object.assign(document.createElement('p'), { textContent: 'パレット中の参照がパラメータに見つかりません。該当行を確認し、ココフォリアでパレットかパラメータを修正してください。' }));
+      const list = document.createElement('ul');
+      for (const ref of checks.references.slice(0, 20)) {
+        const item = document.createElement('li');
+        const button = Object.assign(document.createElement('button'), {
+          type: 'button', className: 'reference-link', textContent: `${ref.line}行目: ${ref.labels.map(label => `{${label}}`).join(' ')}`,
+        });
+        button.addEventListener('click', () => {
+          const palette = f('palette');
+          palette.closest('details').open = true;
+          const lines = entry.out.data.commands.split('\n');
+          const mark = Object.assign(document.createElement('mark'), { textContent: lines[ref.line - 1], tabIndex: -1 });
+          const before = lines.slice(0, ref.line - 1).join('\n');
+          const after = lines.slice(ref.line).join('\n');
+          palette.replaceChildren(document.createTextNode(before + (ref.line > 1 ? '\n' : '')), mark,
+            document.createTextNode((ref.line < lines.length ? '\n' : '') + after));
+          mark.focus();
+          mark.scrollIntoView({ block: 'nearest' });
+        });
+        item.append(button);
+        list.append(item);
+      }
+      warn.append(list);
+      if (checks.references.length > 20) warn.append(`ほか${checks.references.length - 20}行。JSONとパレットでも確認できます。`);
+    }
+    for (const duplicate of checks.duplicates) warn.append(Object.assign(document.createElement('p'), {
+      textContent: `「${duplicate.label || '名称未設定'}」が${duplicate.count}件あります。参照する値が曖昧になるため、貼り付け前に元データの名前と値を確認してください。`,
+    }));
+    const hasNotes = entry.parsed.sections.some(section => section.items.some(item => item.kind === 'note' && item.value));
+    f('notice').textContent = '立ち絵は引き継がれません。貼り付け後に設定してください。' +
+      (hasNotes && !options.includeNotes ? ' 背景などのメモは出力していません。必要なら出力オプションをオンにしてください。' : '');
     f('palette').textContent = d.commands;
     f('memo').textContent = d.memo;
     entry.json = JSON.stringify(out, null, 2);
     f('json').textContent = entry.json;
+    performance.measure('udon:display', { start: displayStart, end: performance.now() });
   }
 
   function addEntry(parsed) {
     const el = $('result-tpl').content.firstElementChild.cloneNode(true);
     const fields = new Map([...el.querySelectorAll('[data-f]')].map(node => [node.dataset.f, node]));
     const entry = { parsed, el, fields };
+    el.querySelector('[data-a="remove"]').addEventListener('click', () => {
+      const index = entries.indexOf(entry);
+      clearTimeout(el.querySelector('[data-a="copy"]').resetTimer);
+      entries = entries.filter(item => item !== entry);
+      el.remove();
+      updateTools();
+      (entries[Math.min(index, entries.length - 1)]?.el.querySelector('[data-a="remove"]') || $('drop')).focus();
+      setMsg(`「${parsed.name}」の結果を削除しました。`, 'ok');
+    });
     el.querySelector('[data-a="copy"]').addEventListener('click', e => copy(entry, e.currentTarget));
-    el.querySelector('[data-a="save"]').addEventListener('click', () =>
-      download(new Blob([entry.json], { type: 'application/json' }), safeName(parsed.name) + '_ccfolia.json'));
+    el.querySelector('[data-a="save"]').addEventListener('click', () => {
+      render(entry);
+      download(new Blob([entry.json], { type: 'application/json' }), safeName(parsed.name) + '_ccfolia.json');
+    });
     entries.push(entry);
     results.append(el);
     wireTips(el);
     render(entry);
+    updateTools();
     return entry;
   }
 
-  function clearEntries() { entries = []; results.replaceChildren(); }
+  function clearEntries() {
+    for (const entry of entries) clearTimeout(entry.el.querySelector('[data-a="copy"]').resetTimer);
+    entries = []; results.replaceChildren(); updateTools();
+  }
 
   // ---- コピー・保存
   function copyWithExecCommand(text) {
@@ -151,6 +212,7 @@
   }
 
   async function copy(entry, btn) {
+    render(entry);
     const text = JSON.stringify(entry.out);
     let ok = true;
     try {
@@ -173,47 +235,96 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
   }
 
-  const safeName = s => String(s).replace(/[\\/:*?"<>|]+/g, '_').trim() || 'character';
+  const safeName = A.safeName;
 
-  // ---- ファイルから
+  // ---- 読み込み状態。世代番号で、キャンセル・選び直し後の古い処理を画面へ戻さない。
+  const yieldToUI = () => new Promise(resolve => setTimeout(resolve, 0));
+  function finishLoading() { $('loading').hidden = true; updateTools(); }
+  function cancelLoad() {
+    ++loadGeneration;
+    for (const row of fileRows) if (row.state === 'pending' || row.state === 'processing') {
+      row.state = 'cancelled'; row.el.textContent = `${row.name}: 中断`;
+    }
+    finishLoading();
+  }
+  $('cancel-load').addEventListener('click', () => {
+    cancelLoad();
+    setMsg(`読み込みを中断しました。変換済みの${entries.length}体はそのまま使えます。`);
+    $('drop').focus();
+  });
+  $('clear-all').addEventListener('click', () => {
+    cancelLoad(); clearEntries();
+    $('file-status').replaceChildren(); fileRows = [];
+    $('file-report').hidden = true;
+    updateTools(); clearMetrics(); setMsg('結果をすべてクリアしました。'); $('drop').focus();
+  });
+  $('save-all').addEventListener('click', () => {
+    // 描画待ちのフレームがあっても、現在のオプションで保存する。
+    try {
+      const options = outputOptions();
+      const characters = entries.map(entry => C.toCcfolia(entry.parsed, options));
+      download(A.createJsonZip(characters), 'characters_ccfolia.zip');
+    }
+    catch (err) { setMsg(err.message, 'err'); }
+  });
+
   async function handleFiles(fileList) {
     const files = [...fileList];
     if (!files.length) return;
+    cancelLoad();
     if (files.length > C.LIMITS.maxBatchFiles || files.reduce((sum, file) => sum + file.size, 0) > C.LIMITS.maxInputBytes) {
       setMsg(`一度に読み込めるのは ${C.LIMITS.maxBatchFiles}ファイル、合計20MBまでです。分けて読み込んでください。`, 'err');
       return;
     }
     const gen = ++loadGeneration;
-    clearEntries();
-    setMsg('読み込み中…');
-    // 1件ずつ読み込み、同時展開によるメモリ消費を抑える。新しい選択が来たら中断する。
-    const loaded = [];
+    clearEntries(); clearMetrics();
+    $('file-status').replaceChildren();
+    $('file-report').hidden = false;
+    $('loading').hidden = false;
+    $('load-progress').max = files.length; $('load-progress').value = 0;
+    fileRows = files.map(file => {
+      const el = Object.assign(document.createElement('li'), { textContent: `${file.name}: 待機中` });
+      $('file-status').append(el);
+      return { name: file.name, el, state: 'pending' };
+    });
+    updateTools();
+    const errors = [];
     let totalXmlBytes = 0;
     let totalCharacters = 0;
-    for (const file of files) {
+    for (const [index, file] of files.entries()) {
       if (gen !== loadGeneration) return;
+      const row = fileRows[index];
+      row.state = 'processing'; row.el.textContent = `${file.name}: 読み込み中`;
+      $('load-label').textContent = `${index + 1} / ${files.length}ファイルを読み込み中`;
+      setMsg(`読み込み中…（${index + 1} / ${files.length}）`);
+      await yieldToUI();
+      if (gen !== loadGeneration) return;
+      let count = 0;
+      const fileErrors = [];
       try {
-        if (file.size > C.LIMITS.maxInputBytes) {
-          throw new Error(`ファイルが大きすぎます（上限 ${Math.round(C.LIMITS.maxInputBytes / 1024 / 1024)}MB）。`);
-        }
         const xmls = await C.extractXmlTexts(await file.arrayBuffer(), file.name);
+        if (gen !== loadGeneration) return;
         totalXmlBytes += xmls.reduce((sum, x) => sum + new TextEncoder().encode(x.xml).length, 0);
         totalCharacters += xmls.length;
         if (totalXmlBytes > C.LIMITS.maxTotalXmlBytes || totalCharacters > C.LIMITS.maxBatchFiles) {
           throw new Error('変換対象が多すぎます（XML合計20MB、50体まで）。分けて読み込んでください。');
         }
-        loaded.push({ chars: xmls.map(x => C.parseUdonariumXml(x.xml)) });
-      } catch (err) {
-        loaded.push({ error: `${file.name}: ${err.message}` });
-      }
+        for (const xml of xmls) {
+          await yieldToUI();
+          if (gen !== loadGeneration) return;
+          try { addEntry(timed('parse', () => C.parseUdonariumXml(xml.xml))); count++; }
+          catch (err) { fileErrors.push(`${xml.name}: ${err.message}`); }
+        }
+      } catch (err) { fileErrors.push(err.message); }
+      if (gen !== loadGeneration) return;
+      row.state = fileErrors.length ? (count ? 'partial' : 'error') : 'success';
+      row.el.textContent = `${file.name}: ${fileErrors.length ? (count ? '一部成功' : '失敗') : '成功'}（${count}体）` +
+        (fileErrors.length ? ` — ${fileErrors.join(' / ')}` : '');
+      errors.push(...fileErrors.map(error => error.startsWith(file.name + ':') ? error : `${file.name}: ${error}`));
+      $('load-progress').value = index + 1;
     }
-    if (gen !== loadGeneration) return;
-
-    const chars = loaded.flatMap(r => r.chars || []);
-    const errors = loaded.map(r => r.error).filter(Boolean);
-    chars.forEach(addEntry);
-    const lines = [chars.length ? `変換しました（${chars.length}体）。` : '', ...errors].filter(Boolean);
-    setMsg(lines.join('\n'), errors.length ? 'err' : 'ok');
+    finishLoading();
+    setMsg([entries.length ? `変換しました（${entries.length}体）。` : '', ...errors].filter(Boolean).join('\n'), errors.length ? 'err' : 'ok');
   }
 
   const drop = $('drop');

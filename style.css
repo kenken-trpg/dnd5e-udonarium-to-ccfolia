@@ -79,6 +79,22 @@ kbd {
   border-radius: 4px; background: var(--surface-2);
 }
 .hidden { display: none; }
+[hidden] { display: none !important; }
+button:disabled { opacity: .55; cursor: default; }
+#result-tools { align-items: center; }
+#result-count { margin: 0; }
+#loading { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+#file-status { padding-left: 1.5em; overflow-wrap: anywhere; font-size: .85rem; }
+.reference-link { font: inherit; color: var(--accent); background: transparent; border: 0; padding: 3px; text-align: left; text-decoration: underline; cursor: pointer; overflow-wrap: anywhere; }
+.warn ul { padding-left: 1.3em; }
+mark { background: #ffe08a; color: #211f1c; }
+mark:focus { outline: 2px solid var(--accent); }
+.manual h2, .manual h3 { margin-top: 1.5em; }
+.manual nav { margin: 1em 0; }
+.manual p, .manual li, .manual a { overflow-wrap: anywhere; }
+.table-scroll { overflow-x: auto; }
+.manual table { border-collapse: collapse; width: 100%; }
+.manual th, .manual td { border: 1px solid var(--border); padding: 8px; text-align: left; }
 code { overflow-wrap: anywhere; }
 footer { color: var(--muted); font-size: .8rem; margin-top: 32px; }
 footer p { margin: 0 0 4px; }
@@ -96,10 +112,10 @@ div.has-tip > .chips { margin-bottom: 0; }
   width: max-content; max-width: min(300px, calc(100vw - 32px));
   padding: 8px 10px; border-radius: 8px; background: var(--text); color: var(--bg);
   font-size: .8rem; font-weight: normal; line-height: 1.6; text-align: left; white-space: normal;
-  box-shadow: 0 4px 14px rgb(0 0 0 / .18); visibility: hidden; pointer-events: none;
+  box-shadow: 0 4px 14px rgb(0 0 0 / .18); visibility: hidden; display: none; pointer-events: none;
 }
-.has-tip:hover > .tip, .has-tip:focus-within > .tip { visibility: visible; }
-.has-tip.tip-off > .tip { visibility: hidden; }
+.has-tip:hover > .tip, .has-tip:focus-within > .tip { visibility: visible; display: block; }
+.has-tip.tip-off > .tip { visibility: hidden; display: none; }
 .tip-btn {
   font: 600 .72rem/1 inherit; width: 18px; height: 18px; padding: 0; border-radius: 50%;
   border: 1px solid var(--muted); background: transparent; color: var(--muted); cursor: help;

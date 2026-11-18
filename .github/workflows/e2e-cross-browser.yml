@@ -7,6 +7,7 @@ on:
     paths:
       - index.html
       - app.js
+      - archive.js
       - style.css
       - converter.js
       - tests/e2e/**
@@ -15,6 +16,8 @@ on:
       - package.json
       - scripts/build-site.sh
       - docs/offline-readme.txt
+      - docs/manual.md
+      - scripts/build-manual.py
       - package-lock.json
       - .github/workflows/e2e-cross-browser.yml
   workflow_dispatch:
