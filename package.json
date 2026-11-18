@@ -6,10 +6,15 @@
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "test:e2e": "playwright test --project=chromium",
-    "test:e2e:all": "playwright test --project=chromium --project=firefox && playwright test --project=webkit"
+    "test:e2e:all": "playwright test --project=chromium --project=firefox && playwright test --project=webkit",
+    "lint": "eslint ."
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@eslint/js": "10.0.1",
     "@playwright/test": "1.65.1",
-    "@xmldom/xmldom": "0.9.12"
+    "@xmldom/xmldom": "0.9.12",
+    "eslint": "10.15.0",
+    "globals": "17.14.0"
   }
 }

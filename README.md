@@ -77,6 +77,8 @@ npx playwright install chromium  # 初回だけ
 npm run test:e2e                 # ブラウザ版のE2E（Playwright, Chromium）
 npx playwright install firefox webkit  # 初回だけ
 npm run test:e2e:all             # Chromium / Firefox / WebKit（Safari のエンジン）すべて
+npm run lint                     # ESLint
+.venv/bin/ruff check .           # ruff（Python の Lint）
 
 .venv/bin/pip install -r requirements.txt -r requirements-test.txt
 .venv/bin/python -m pytest tests # Streamlit版の変換ロジック・両版の出力一致・Streamlit版のE2E
@@ -86,7 +88,8 @@ npm run test:e2e:all             # Chromium / Firefox / WebKit（Safari のエ�
 |---|---|
 | `tests/convert.test.mjs` | `converter.js` の単体テスト（安全対策を含む） |
 | `tests/test_udon_ccfolia.py` | `udon_ccfolia.py` の単体テストと、`converter.js` との出力一致 |
-| `tests/e2e/browser.spec.mjs` | ブラウザ版を実際の Chromium で操作する（読み込み・ドロップ・オプション・コピー・保存・ツールチップ・`file://`） |
+| `tests/e2e/browser.spec.mjs` | ブラウザ版を実際のブラウザで操作する（読み込み・ドロップ・オプション・コピー・保存・ツールチップ・`file://`） |
+| `tests/e2e/a11y.spec.mjs` | アクセシビリティの自動チェック（axe-core、WCAG 2.1 AA）。初期画面・変換結果・ツールチップ表示中を、ライト／ダークの両方で |
 | `tests/test_streamlit_app.py` | Streamlit版を `streamlit.testing` の AppTest で操作する |
 
 E2Eテストは不安定（flaky）にならないよう、次の決まりで書いている。
@@ -98,16 +101,20 @@ E2Eテストは不安定（flaky）にならないよう、次の決まりで書
 - **リトライしない**: 失敗を隠さないよう `retries: 0`。失敗したテストのトレースは CI の成果物（`playwright-traces`）に残る。
 - **ページ内のエラーを見逃さない**: コンソールのエラー・警告、CSP違反、外部への通信があればテストを失敗にする。
   ブラウザ自身が出すアプリと無関係な出力だけを `tests/e2e/fixtures.mjs` で除外し、特定のテストでだけ出る出力は `test.use({ allowedConsole: /…/ })` で明示する。
-- **Firefox と WebKit を同時に動かさない**: macOS で両方を並行させると WebKit のクリック・ホバーが失敗することがある（単独や Chromium との組み合わせでは起きない）。
-  `npm run test:e2e:all` は WebKit を最後に単独で回し、CI はブラウザごとに別のジョブにしている。
+- **macOS では Firefox を閉じてから WebKit を回す**: macOS で Firefox が動いていると、WebKit のクリック・ホバーのテストが失敗することがある
+  （テスト用の Firefox を同時に動かしたとき、普段使いの Firefox を開いていたときに起きた。WebKit 単独や Chromium との組み合わせでは起きない。アプリの不具合ではない）。
+  `npm run test:e2e:all` は WebKit を最後に単独で回し、CI（Linux）はブラウザごとに別のジョブにしている。
 
 新しいE2Eテストを足したら、`npx playwright test --repeat-each=30 --workers=8` で何度回しても通ることを確かめる。
 
 ### CI
 
-`.github/workflows/test.yml` が main への push と PR で動く（Markdown だけの変更では動かない）。
-3つのジョブ（単体テスト / ブラウザ版E2E / Streamlit版E2E）が並行して動き、npm・pip はキャッシュする（Playwright のブラウザは、キャッシュから戻すより毎回入れる方が速いのでキャッシュしない）。
+`.github/workflows/test.yml` が main への push と PR で動く。
+4つのジョブ（Lint / 単体テスト / ブラウザ版E2E / Streamlit版E2E）が並行して動き、npm・pip はキャッシュする（Playwright のブラウザは、キャッシュから戻すより毎回入れる方が速いのでキャッシュしない）。
 同じブランチに続けて push すると、古い実行は取り消される。
+
+**main はブランチ保護されている。** main へ直接 push することはできず、変更は PR で入れる。
+上の4つのジョブがすべて成功しないとマージできない（管理者も同じ）。強制 push と削除も禁止している。
 
 `.github/workflows/e2e-cross-browser.yml` は、ブラウザ版に関わるファイル（`index.html`・`app.js`・`style.css`・`converter.js`・E2Eテストなど）を変えた PR のときだけ、
 Firefox と WebKit で E2E を回す（Actions タブから手動でも実行できる）。
@@ -130,4 +137,5 @@ Firefox と WebKit で E2E を回す（Actions タブから手動でも実行で
   Streamlit版は `.streamlit/config.toml` でアップロードの大きさも制限している。
 - **XML**: DTD（`<!DOCTYPE>` / `<!ENTITY>`）を含むXMLは解析前に拒否する（実体展開による膨張・外部参照の対策）。
 - **壊れたZIP**: 範囲外を指すヘッダなどは利用者向けのエラーにし、例外の詳細を画面に出さない。
+- **コード検査**: GitHub の CodeQL（default setup）が JavaScript・Python・ワークフローを push と PR のたびに検査する。結果は Security タブに出る。
 - **CI**: アクションはコミットSHAで固定し、`GITHUB_TOKEN` は読み取り専用、`npm ci --ignore-scripts`。Dependabot（`.github/dependabot.yml`）が週1回更新を提案する。

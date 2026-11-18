@@ -30,6 +30,8 @@ export const test = base.extend({
   allowedConsole: [null, { option: true }],
 
   /** ページ内のエラー・CSP違反・外部への通信。テストの最後に空であることを確かめる */
+  // Playwright は引数の分割代入から依存する fixture を読み取るので、使わなくても {} が必要
+  // eslint-disable-next-line no-empty-pattern
   problems: async ({}, use) => { await use([]); },
 
   page: async ({ page, problems, allowedConsole }, use) => {

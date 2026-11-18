@@ -6,11 +6,12 @@ converter.js と同じ変換を行う。Streamlit 版（streamlit_app.py）か�
 """
 from __future__ import annotations
 
+import contextlib
 import io
 import json
 import re
-import zipfile
 import xml.etree.ElementTree as ET
+import zipfile
 from dataclasses import dataclass, field
 from functools import cached_property
 
@@ -42,10 +43,8 @@ def _zip_name(info: zipfile.ZipInfo) -> str:
     # 生成ツールのZIPはUTF-8フラグ無しでUTF-8のファイル名を入れるので、CP437として解釈されたものを戻す
     name = info.filename
     if not info.flag_bits & 0x800:
-        try:
+        with contextlib.suppress(UnicodeEncodeError, UnicodeDecodeError):
             name = name.encode("cp437").decode("utf-8")
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            pass
     return name
 
 
@@ -237,7 +236,7 @@ def build_memo(parsed: Parsed, include_notes: bool = False, external_url: str = 
         for n in parsed.items("note"):
             if n.value:
                 lines += ["", f"【{n.label}】", n.value]
-    lines = [l for i, l in enumerate(lines) if l != "" or i > 0]
+    lines = [line for i, line in enumerate(lines) if line != "" or i > 0]
     return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
 
 

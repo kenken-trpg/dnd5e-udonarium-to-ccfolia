@@ -33,7 +33,7 @@
       <button type="button" class="tip-btn" aria-label="読み込めるファイルについて">?</button>
       <span class="tip" role="tooltip">生成ツールで保存したZIPか、その中のXMLを読み込めます。複数まとめて選べます。1ファイル <span data-limit="maxInputBytes">20MB</span> まで。</span>
     </h2>
-    <div id="drop" class="drop" tabindex="0" role="button" aria-label="ZIP または XML ファイルを選択">
+    <div id="drop" class="drop" tabindex="0" role="button">
       保存した <strong>ZIP</strong>（または中の <strong>XML</strong>）をここにドロップ、またはクリックして選択
     </div>
     <input id="file-input" type="file" accept=".zip,.xml,application/zip,text/xml" multiple class="hidden">
@@ -101,9 +101,9 @@
         <span class="tip" role="tooltip">変換結果をJSONファイルとして保存します。バックアップや、あとで貼り付けたいとき用です。</span>
       </span>
     </div>
-    <details><summary>チャットパレット</summary><pre data-f="palette"></pre></details>
-    <details><summary>メモ</summary><pre data-f="memo"></pre></details>
-    <details><summary>JSON</summary><pre data-f="json"></pre></details>
+    <details><summary>チャットパレット</summary><pre data-f="palette" tabindex="0" role="region" aria-label="チャットパレット"></pre></details>
+    <details><summary>メモ</summary><pre data-f="memo" tabindex="0" role="region" aria-label="メモ"></pre></details>
+    <details><summary>JSON</summary><pre data-f="json" tabindex="0" role="region" aria-label="JSON"></pre></details>
   </article>
 </template>
 
